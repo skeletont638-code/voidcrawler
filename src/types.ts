@@ -1,5 +1,5 @@
 import type { Room } from './dungeon.js';
-import type { Player } from './entities.js';
+import type { Player, Monster } from './entities.js';
 
 export type RngFn = () => number;
 
@@ -18,6 +18,10 @@ export interface MonsterArchetype {
   stationary?: boolean;
   trapRange?: number;
   trapDamage?: number;
+  turnsPerAction?: number;
+  invisible?: boolean;
+  support?: boolean;
+  packSize?: number;
 }
 
 export interface StartingClass {
@@ -27,6 +31,24 @@ export interface StartingClass {
   str: number;
   dex: number;
   vit: number;
+  unlockCost: number;
+}
+
+export interface Biome {
+  id: string;
+  name: string;
+  floors: [number, number, number];
+  wallColor: string;
+  floorColor: string;
+  stairsColor: string;
+  archetypeWeights: Record<string, number>;
+  bossArchetypeId: string;
+}
+
+export interface Perk {
+  id: string;
+  label: string;
+  apply: (player: Player) => void;
 }
 
 export interface TileGrid {
@@ -54,7 +76,7 @@ export interface Affix {
 
 export interface BaseItem {
   id: string;
-  type: 'weapon' | 'armor' | 'potion' | 'scroll';
+  type: 'weapon' | 'armor' | 'potion' | 'scroll' | 'accessory';
   name: string;
   baseDamage?: number;
   baseArmor?: number;
@@ -73,13 +95,14 @@ export interface LootTableEntry {
   weight: number;
 }
 
-export type MonsterActionType = 'move' | 'attack' | 'rangedAttack' | 'placeTrap' | 'wait';
+export type MonsterActionType = 'move' | 'attack' | 'rangedAttack' | 'placeTrap' | 'heal' | 'wait';
 
 export interface MonsterAction {
   type: MonsterActionType;
   to?: { x: number; y: number };
   target?: Player;
   at?: { x: number; y: number };
+  healTarget?: Monster;
 }
 
 export interface AttackStats {

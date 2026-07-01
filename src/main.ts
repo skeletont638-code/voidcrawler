@@ -1,4 +1,4 @@
-import { TILE_SIZE, GRID_WIDTH, GRID_HEIGHT, MONSTER_ARCHETYPES, STARTING_CLASSES } from './data.js';
+import { TILE_SIZE, GRID_WIDTH, GRID_HEIGHT, MONSTER_ARCHETYPES, STARTING_CLASSES, BIOMES } from './data.js';
 import { generateFloor, TILE, idx } from './dungeon.js';
 import { computeFOV } from './fov.js';
 import { createRng } from './rng.js';
@@ -6,7 +6,7 @@ import { Player, Monster } from './entities.js';
 import { resolveAttack, tickStatuses } from './combat.js';
 import { decideMonsterAction } from './ai.js';
 import { generateItem, rollLootTable, RARITY } from './items.js';
-import { BASE_ITEMS, getLootTableForFloor } from './data.js';
+import { BASE_ITEMS, ACCESSORY_BASE_ITEMS, getLootTableForFloor } from './data.js';
 import { renderHUD, renderInventory, renderCombatLog, renderMinimap } from './ui.js';
 import {
   createShake, updateShake, getShakeOffset,
@@ -15,7 +15,7 @@ import {
   createTween, updateTween, getTweenPosition, drawFx,
 } from './fx.js';
 import { loadMeta, saveMeta, applyRunResult } from './save.js';
-import type { Floor, Item, FxState, TweenState } from './types.js';
+import type { Floor, Item, FxState, TweenState, Biome, Perk } from './types.js';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 canvas.width = GRID_WIDTH * TILE_SIZE;
@@ -48,11 +48,50 @@ let lastFrameTime = performance.now();
 let playerTween: TweenState | null = null;
 const monsterTweens = new WeakMap<Monster, TweenState>();
 
+let pendingPerkChoice: Perk[] | null = null;
+
+function chebyshevDistance(x1: number, y1: number, x2: number, y2: number): number {
+  return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
+}
+
+function biomeForDepth(depth: number): Biome {
+  return BIOMES.find(b => b.floors.includes(depth)) ?? BIOMES[BIOMES.length - 1]!;
+}
+
+function weightedArchetypePick(weights: Record<string, number>): string {
+  const entries = Object.entries(weights);
+  const total = entries.reduce((sum, [, w]) => sum + w, 0);
+  let roll = rng() * total;
+  for (const [id, weight] of entries) {
+    if (roll < weight) return id;
+    roll -= weight;
+  }
+  return entries[entries.length - 1]![0]!;
+}
+
+function grantXp(amount: number): void {
+  const scaled = Math.round(amount * player.getXpMultiplier());
+  const { perkChoices } = player.gainXp(scaled);
+  if (perkChoices.length > 0) {
+    pendingPerkChoice = perkChoices;
+    log(`Level up! Choose a perk: 1) ${perkChoices[0]!.label}  2) ${perkChoices[1]!.label}  3) ${perkChoices[2]!.label}`);
+  }
+}
+
+function choosePerk(index: number): void {
+  if (!pendingPerkChoice) return;
+  const perk = pendingPerkChoice[index];
+  if (!perk) return;
+  perk.apply(player);
+  log(`You gain a perk: ${perk.label}.`);
+  pendingPerkChoice = null;
+}
+
 function maybeDropLoot(x: number, y: number): void {
   const lootTable = getLootTableForFloor(floor.depth);
   const entry = rollLootTable(lootTable, rng);
   if (!entry.itemId) return;
-  const base = BASE_ITEMS.find(b => b.id === entry.itemId)!;
+  const base = [...BASE_ITEMS, ...ACCESSORY_BASE_ITEMS].find(b => b.id === entry.itemId)!;
   const rarity = RARITY[Math.min(RARITY.length - 1, Math.floor(rng() * rng() * RARITY.length))]!;
   groundItems.set(`${x},${y}`, generateItem(base, rarity, rng, floor.depth));
 }
@@ -69,14 +108,14 @@ function pickUpItemUnderPlayer(): void {
 function equipOrUseItem(index: number): void {
   const item = player.inventory[index];
   if (!item) return;
-  if (item.type === 'weapon' || item.type === 'armor') {
-    const slot: 'weapon' | 'armor' = item.type === 'weapon' ? 'weapon' : 'armor';
+  if (item.type === 'weapon' || item.type === 'armor' || item.type === 'accessory') {
+    const slot: 'weapon' | 'armor' | 'accessory' = item.type;
     player.equipment[slot] = item;
     player.inventory.splice(index, 1);
     log(`You equip ${item.name}.`);
   } else if (item.type === 'potion') {
     item.identified = true;
-    player.hp = Math.min(player.maxHp, player.hp + (item.healAmount ?? 0));
+    player.hp = Math.min(player.maxHp + player.getMaxHpBonus(), player.hp + (item.healAmount ?? 0));
     player.inventory.splice(index, 1);
     log(`You drink the potion and recover ${item.healAmount ?? 0} HP.`);
   } else if (item.type === 'scroll') {
@@ -95,6 +134,11 @@ function equipOrUseItem(index: number): void {
 function isWalkable(x: number, y: number): boolean {
   if (x < 0 || y < 0 || x >= floor.width || y >= floor.height) return false;
   return floor.grid[idx(x, y, floor.width)] !== TILE.WALL;
+}
+
+function isWalkableForSpawn(f: Floor, x: number, y: number): boolean {
+  if (x < 0 || y < 0 || x >= f.width || y >= f.height) return false;
+  return f.grid[idx(x, y, f.width)] !== TILE.WALL;
 }
 
 function monsterAt(x: number, y: number): Monster | undefined {
@@ -118,14 +162,19 @@ function playerAttack(target: Monster): void {
   }
   target.hp = Math.max(0, target.hp - result.damage);
   log(`You hit the ${target.archetype.name} for ${result.damage}${result.crit ? ' (crit!)' : ''}.`);
+  if (result.crit && player.perks.includes('lifesteal')) {
+    const healed = Math.round(result.damage * 0.2);
+    player.hp = Math.min(player.maxHp + player.getMaxHpBonus(), player.hp + healed);
+    log(`You steal ${healed} HP from the ${target.archetype.name}.`);
+  }
   if (target.hp === 0) {
     log(`The ${target.archetype.name} dies.`);
     monsters = monsters.filter(m => m !== target);
     kills += 1;
-    player.gainXp(10);
+    grantXp(10);
     maybeDropLoot(target.x, target.y);
     fxState.particles.push(...createParticleBurst(target.x * TILE_SIZE + TILE_SIZE / 2, target.y * TILE_SIZE + TILE_SIZE / 2, 12, rng));
-    if (target.archetype.id === 'boss') {
+    if (target.archetype.id === biomeForDepth(floor.depth).bossArchetypeId && floor.depth === 9) {
       endRun('victory');
     }
   }
@@ -139,12 +188,12 @@ function monsterTurn(monster: Monster): void {
     log(`The ${monster.archetype.name} burns to death.`);
     monsters = monsters.filter(m => m !== monster);
     kills += 1;
-    player.gainXp(10);
+    grantXp(10);
     maybeDropLoot(monster.x, monster.y);
     return;
   }
 
-  const action = decideMonsterAction(monster, player, floor, canSeeBetween);
+  const action = decideMonsterAction(monster, player, floor, canSeeBetween, monsters.filter(m => m !== monster));
   if (action.type === 'attack' || action.type === 'rangedAttack') {
     const result = resolveAttack(monster.getAttackStats(), rng);
     if (!result.hit) {
@@ -170,6 +219,12 @@ function monsterTurn(monster: Monster): void {
     if (isWalkable(at.x, at.y) && !monsterAt(at.x, at.y) && !traps.has(trapKey)) {
       traps.set(trapKey, { damage: monster.archetype.trapDamage ?? 0, ownerName: monster.archetype.name });
     }
+  } else if (action.type === 'heal') {
+    const target = action.healTarget!;
+    const healAmount = Math.round(target.maxHp * 0.25);
+    target.hp = Math.min(target.maxHp, target.hp + healAmount);
+    log(`The ${monster.archetype.name} heals the ${target.archetype.name} for ${healAmount}.`);
+    fxState.floatingTexts.push(createFloatingText(target.x * TILE_SIZE, target.y * TILE_SIZE, `+${healAmount}`, '#6adf6a'));
   }
 }
 
@@ -187,16 +242,18 @@ function triggerTrapUnderPlayer(): void {
   const trap = traps.get(trapKey);
   if (!trap) return;
   traps.delete(trapKey);
-  player.hp = Math.max(0, player.hp - trap.damage);
-  log(`You trigger a trap set by the ${trap.ownerName}! You take ${trap.damage} damage.`);
+  const trapDamage = Math.max(0, trap.damage - (player.perks.includes('resilience') ? 2 : 0));
+  player.hp = Math.max(0, player.hp - trapDamage);
+  log(`You trigger a trap set by the ${trap.ownerName}! You take ${trapDamage} damage.`);
 }
 
 function tickPlayerStatuses(): void {
   const { totalDamage, remaining } = tickStatuses(player.statuses);
   player.statuses = remaining;
   if (totalDamage > 0) {
-    player.hp = Math.max(0, player.hp - totalDamage);
-    log(`You take ${totalDamage} damage from lingering status effects.`);
+    const reduced = Math.max(0, totalDamage - (player.perks.includes('resilience') ? 2 : 0));
+    player.hp = Math.max(0, player.hp - reduced);
+    log(`You take ${reduced} damage from lingering status effects.`);
   }
 }
 
@@ -253,16 +310,31 @@ function startFloor(depth: number): void {
   groundItems.clear();
   playerTween = null;
 
-  if (depth === 9) {
+  const biome = biomeForDepth(depth);
+  const isBossFloor = depth === biome.floors[2];
+
+  if (isBossFloor) {
     const bossRoom = floor.rooms[floor.rooms.length - 1]!;
     const c = bossRoom.center();
-    monsters = [new Monster(MONSTER_ARCHETYPES.boss!, c.x, c.y)];
+    monsters = [new Monster(MONSTER_ARCHETYPES[biome.bossArchetypeId]!, c.x, c.y)];
   } else {
-    const archetypeIds = ['rusher', 'caster', 'trapper'];
-    monsters = floor.rooms.slice(1).map((room, i) => {
+    monsters = [];
+    for (const room of floor.rooms.slice(1)) {
       const c = room.center();
-      return new Monster(MONSTER_ARCHETYPES[archetypeIds[i % archetypeIds.length]!]!, c.x, c.y);
-    });
+      const archetypeId = weightedArchetypePick(biome.archetypeWeights);
+      const archetype = MONSTER_ARCHETYPES[archetypeId]!;
+      if (archetype.packSize) {
+        for (let i = 0; i < archetype.packSize; i++) {
+          const offsetX = c.x + (i % 2 === 0 ? Math.floor(i / 2) : -Math.floor((i + 1) / 2));
+          const offsetY = c.y;
+          const spawnX = isWalkableForSpawn(floor, offsetX, offsetY) ? offsetX : c.x;
+          const spawnY = isWalkableForSpawn(floor, offsetX, offsetY) ? offsetY : c.y;
+          monsters.push(new Monster(archetype, spawnX, spawnY));
+        }
+      } else {
+        monsters.push(new Monster(archetype, c.x, c.y));
+      }
+    }
   }
 
   explored = new Set();
@@ -281,6 +353,12 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Enter') location.reload();
     return;
   }
+  if (pendingPerkChoice) {
+    if (/^[1-3]$/.test(e.key)) {
+      choosePerk(Number(e.key) - 1);
+    }
+    return;
+  }
   const move = KEY_MOVES[e.key];
   if (move) {
     e.preventDefault();
@@ -295,21 +373,10 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
     inventoryOpen = !inventoryOpen;
     return;
   }
-  if (e.key === 'p' && player.statPoints > 0) {
-    player.str += 1;
-    player.statPoints -= 1;
-    return;
-  }
   if (/^[1-9]$/.test(e.key)) {
     equipOrUseItem(Number(e.key) - 1);
   }
 });
-
-const TILE_COLORS: Record<number, string> = {
-  [TILE.WALL]: '#1c1c26',
-  [TILE.FLOOR]: '#2e2e3a',
-  [TILE.STAIRS_DOWN]: '#4a4a2e',
-};
 
 const ITEM_RARITY_COLORS: Record<string, string> = { common: '#c8c8c8', uncommon: '#5ad45a', rare: '#4a90ff', legendary: '#e0a030' };
 
@@ -319,12 +386,18 @@ function render(): void {
   ctx.translate(shakeOffset.x, shakeOffset.y);
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const biome = biomeForDepth(floor.depth);
+  const tileColors: Record<number, string> = {
+    [TILE.WALL]: biome.wallColor,
+    [TILE.FLOOR]: biome.floorColor,
+    [TILE.STAIRS_DOWN]: biome.stairsColor,
+  };
   for (let y = 0; y < floor.height; y++) {
     for (let x = 0; x < floor.width; x++) {
       const key = `${x},${y}`;
       if (!explored.has(key)) continue;
       const tile = floor.grid[y * floor.width + x]!;
-      ctx.fillStyle = TILE_COLORS[tile]!;
+      ctx.fillStyle = tileColors[tile]!;
       ctx.globalAlpha = visible.has(key) ? 1.0 : 0.4;
       ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
     }
@@ -359,6 +432,7 @@ function render(): void {
   for (const m of monsters) {
     const key = `${m.x},${m.y}`;
     if (!visible.has(key)) continue;
+    if (m.archetype.invisible && chebyshevDistance(m.x, m.y, player.x, player.y) > 1) continue;
     const tween = monsterTweens.get(m) ?? null;
     const pixelPos = tween ? getTweenPosition(tween)! : { x: m.x, y: m.y };
     ctx.fillStyle = m.archetype.color;

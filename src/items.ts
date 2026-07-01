@@ -15,6 +15,8 @@ const AFFIX_POOL: AffixDef[] = [
   { key: 'damage', label: 'of Force', roll: (rng, tier) => Math.ceil((1 + rng() * 3) * tier) },
   { key: 'critChance', label: 'of Precision', roll: (rng, tier) => +(0.02 + rng() * 0.03 * tier).toFixed(2) },
   { key: 'resistance', label: 'of Warding', roll: (rng, tier) => +(0.05 + rng() * 0.1 * tier).toFixed(2) },
+  { key: 'maxHp', label: 'of Vitality', roll: (rng, tier) => Math.ceil((5 + rng() * 10) * tier) },
+  { key: 'xpGain', label: 'of Wisdom', roll: (rng, tier) => +(0.05 + rng() * 0.1 * tier).toFixed(2) },
 ];
 
 export function rollAffixes(rarity: Rarity, rng: RngFn, tierMultiplier = 1): Affix[] {
@@ -31,7 +33,7 @@ export function rollAffixes(rarity: Rarity, rng: RngFn, tierMultiplier = 1): Aff
 
 export function generateItem(baseItem: BaseItem, rarity: Rarity, rng: RngFn, floorDepth: number): Item {
   const tierMultiplier = 1 + floorDepth * 0.15;
-  const identifiable = baseItem.type === 'weapon' || baseItem.type === 'armor';
+  const identifiable = baseItem.type === 'weapon' || baseItem.type === 'armor' || baseItem.type === 'accessory';
   return {
     ...baseItem,
     rarity,

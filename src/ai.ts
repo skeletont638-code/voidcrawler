@@ -12,9 +12,31 @@ function stepAwayFrom(monster: Monster, player: Player): { x: number; y: number 
   return { x: monster.x + dx, y: monster.y + dy };
 }
 
+function findHealTarget(monster: Monster, allies: Monster[]): Monster | null {
+  const HEAL_RANGE = 5;
+  let best: Monster | null = null;
+  let bestDist = Infinity;
+  for (const ally of allies) {
+    if (ally.hp >= ally.maxHp) continue;
+    const dist = chebyshev(monster.x, monster.y, ally.x, ally.y);
+    if (dist > HEAL_RANGE) continue;
+    if (dist < bestDist) { bestDist = dist; best = ally; }
+  }
+  return best;
+}
+
 export type CanSeeFn = (mx: number, my: number, px: number, py: number) => boolean;
 
-export function decideMonsterAction(monster: Monster, player: Player, floor: TileGrid, canSee: CanSeeFn): MonsterAction {
+export function decideMonsterAction(
+  monster: Monster, player: Player, floor: TileGrid, canSee: CanSeeFn, allies: Monster[],
+): MonsterAction {
+  if (monster.archetype.turnsPerAction && monster.archetype.turnsPerAction > 1) {
+    monster.turnCounter += 1;
+    if (monster.turnCounter % monster.archetype.turnsPerAction !== 0) {
+      return { type: 'wait' };
+    }
+  }
+
   const dist = chebyshev(monster.x, monster.y, player.x, player.y);
   const sees = canSee(monster.x, monster.y, player.x, player.y);
 
@@ -40,6 +62,13 @@ export function decideMonsterAction(monster: Monster, player: Player, floor: Til
       }
     }
     return { type: 'wait' };
+  }
+
+  if (monster.archetype.support && monster.state !== 'idle') {
+    const healTarget = findHealTarget(monster, allies);
+    if (healTarget) {
+      return { type: 'heal', healTarget };
+    }
   }
 
   if (monster.state === 'aggro' || monster.state === 'chase' || monster.state === 'attack') {

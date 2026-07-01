@@ -9,7 +9,7 @@ export function renderHUD(player: Player, floor: Floor): void {
     `HP ${player.hp}/${player.maxHp}  Lv ${player.level}`,
     `Floor ${floor.depth}`,
     `Weapon: ${weapon}  Armor: ${armor}`,
-    player.statPoints > 0 ? `Unspent stat points: ${player.statPoints} (press 'p' to add STR)` : '',
+    '',
   ].join('<br>');
 }
 

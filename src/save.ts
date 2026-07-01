@@ -1,3 +1,4 @@
+import { STARTING_CLASSES } from './data.js';
 import type { MetaProgression, StorageLike } from './types.js';
 
 const SAVE_KEY = 'voidcrawler-meta-v1';
@@ -29,4 +30,27 @@ export function applyRunResult(
 ): { updated: MetaProgression; earned: number } {
   const earned = floorReached * 10 + kills * 2;
   return { updated: { ...meta, currency: meta.currency + earned }, earned };
+}
+
+export function purchaseClass(
+  meta: MetaProgression, classId: string,
+): { updated: MetaProgression; success: boolean; reason?: string } {
+  const startingClass = STARTING_CLASSES[classId];
+  if (!startingClass) {
+    return { updated: meta, success: false, reason: 'unknown class' };
+  }
+  if (meta.unlockedClasses.includes(classId)) {
+    return { updated: meta, success: false, reason: 'already unlocked' };
+  }
+  if (meta.currency < startingClass.unlockCost) {
+    return { updated: meta, success: false, reason: 'insufficient currency' };
+  }
+  return {
+    updated: {
+      ...meta,
+      currency: meta.currency - startingClass.unlockCost,
+      unlockedClasses: [...meta.unlockedClasses, classId],
+    },
+    success: true,
+  };
 }

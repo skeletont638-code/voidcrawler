@@ -1,9 +1,19 @@
-import { XP_TABLE } from './data.js';
-import type { StartingClass, MonsterArchetype, StatusEffect, Item, AttackStats } from './types.js';
+import { XP_TABLE, PERK_POOL } from './data.js';
+import type { StartingClass, MonsterArchetype, StatusEffect, Item, AttackStats, Perk } from './types.js';
 
 export function xpForNextLevel(level: number): number {
   if (level < XP_TABLE.length) return XP_TABLE[level]!;
   return XP_TABLE[XP_TABLE.length - 1]! + (level - XP_TABLE.length + 1) * 100;
+}
+
+function pickThreePerks(): Perk[] {
+  const pool = [...PERK_POOL];
+  const picks: Perk[] = [];
+  for (let i = 0; i < 3 && pool.length; i++) {
+    const index = Math.floor(Math.random() * pool.length);
+    picks.push(pool.splice(index, 1)[0]!);
+  }
+  return picks;
 }
 
 export class Player {
@@ -11,12 +21,12 @@ export class Player {
   hp: number;
   level = 1;
   xp = 0;
-  statPoints = 0;
   str: number;
   dex: number;
   vit: number;
+  perks: string[] = [];
   inventory: Item[] = [];
-  equipment: { weapon: Item | null; armor: Item | null } = { weapon: null, armor: null };
+  equipment: { weapon: Item | null; armor: Item | null; accessory: Item | null } = { weapon: null, armor: null, accessory: null };
   x = 0;
   y = 0;
   statuses: StatusEffect[] = [];
@@ -29,18 +39,21 @@ export class Player {
     this.vit = startingClass.vit;
   }
 
-  gainXp(amount: number): boolean {
+  gainXp(amount: number): { leveled: boolean; perkChoices: Perk[] } {
     this.xp += amount;
     let leveled = false;
+    let perkChoices: Perk[] = [];
     while (this.xp >= xpForNextLevel(this.level)) {
       this.xp -= xpForNextLevel(this.level);
       this.level += 1;
-      this.statPoints += 1;
       this.maxHp += 5;
       this.hp = this.maxHp;
       leveled = true;
+      if (this.level % 2 === 0) {
+        perkChoices = pickThreePerks();
+      }
     }
-    return leveled;
+    return { leveled, perkChoices };
   }
 
   getAttackStats(): AttackStats {
@@ -55,6 +68,15 @@ export class Player {
       .reduce((sum, a) => sum + (a.key === 'resistance' ? a.value * 0.2 : 0), 0);
     return { damage: weaponDamage, critChance, dodgeChance };
   }
+
+  getMaxHpBonus(): number {
+    return this.equipment.accessory?.affixes.reduce((sum, a) => sum + (a.key === 'maxHp' ? a.value : 0), 0) ?? 0;
+  }
+
+  getXpMultiplier(): number {
+    const bonus = this.equipment.accessory?.affixes.reduce((sum, a) => sum + (a.key === 'xpGain' ? a.value : 0), 0) ?? 0;
+    return 1 + bonus;
+  }
 }
 
 export class Monster {
@@ -65,6 +87,7 @@ export class Monster {
   state: 'idle' | 'aggro' | 'chase' | 'attack' | 'flee' = 'idle';
   statuses: StatusEffect[] = [];
   lastKnownPlayerPos: { x: number; y: number } | null = null;
+  turnCounter = 0;
 
   constructor(public archetype: MonsterArchetype, x: number, y: number) {
     this.hp = archetype.hp;
