@@ -72,11 +72,8 @@ Game-appropriate, not production-service-appropriate:
 
 ## Testing Approach
 
-This is an interactive visual game — the primary verification is playing it end-to-end (multiple floors, item pickup, death, level-up) via a browser, not unit tests. Two pieces of deterministic logic are worth unit-testing directly since they fail silently otherwise:
-
-- Dungeon generation: every generated floor has all rooms mutually reachable (no isolated rooms).
-- Combat math: damage/crit/dodge formulas produce expected results for known inputs.
+This is an interactive visual game — the primary verification is playing it end-to-end (multiple floors, item pickup, death, level-up) via a browser, not unit tests. Deterministic, pure-function logic is unit-tested directly since it fails silently otherwise — this covers every module that doesn't touch the DOM/canvas: RNG determinism, dungeon generation (connectivity), FOV (shadowcasting correctness), entity leveling math, combat math (damage/crit/dodge), pathfinding, AI state transitions, item affix/loot generation, and the save/meta-progression round-trip. Rendering, input handling, and UI wiring remain browser-playtest-only.
 
 ## Explicitly Out of Scope (v1)
 
-Multiplayer, sound/music, touch/mobile controls, mid-run save-and-resume, more than 3 monster archetypes, more than 4 item rarity tiers.
+Multiplayer, sound/music, touch/mobile controls, mid-run save-and-resume, more than 3 regular-floor monster archetypes (rusher/caster/trapper) — the single boss-floor monster is a separate, one-off archetype and doesn't count against this cap — more than 4 item rarity tiers.
