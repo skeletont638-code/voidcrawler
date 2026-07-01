@@ -1,5 +1,8 @@
-export function renderHUD(player, floor) {
-  const hud = document.getElementById('hud');
+import type { Floor } from './types.js';
+import type { Player } from './entities.js';
+
+export function renderHUD(player: Player, floor: Floor): void {
+  const hud = document.getElementById('hud')!;
   const weapon = player.equipment.weapon ? player.equipment.weapon.name : 'Fists';
   const armor = player.equipment.armor ? player.equipment.armor.name : 'None';
   hud.innerHTML = [
@@ -10,8 +13,8 @@ export function renderHUD(player, floor) {
   ].join('<br>');
 }
 
-export function renderInventory(player, isOpen) {
-  const panel = document.getElementById('inventory-panel');
+export function renderInventory(player: Player, isOpen: boolean): void {
+  const panel = document.getElementById('inventory-panel')!;
   panel.classList.toggle('hidden', !isOpen);
   if (!isOpen) return;
   const rows = player.inventory.map((item, i) => {
@@ -21,13 +24,13 @@ export function renderInventory(player, isOpen) {
   panel.innerHTML = `<b>Inventory (i to close, 1-9 to use/equip)</b><br>${rows.join('<br>') || '(empty)'}`;
 }
 
-export function renderCombatLog(combatLog) {
-  document.getElementById('combat-log').textContent = combatLog.join('\n');
+export function renderCombatLog(combatLog: string[]): void {
+  document.getElementById('combat-log')!.textContent = combatLog.join('\n');
 }
 
 const MINIMAP_TILE_SIZE = 4;
 
-export function renderMinimap(ctx, floor, player, explored) {
+export function renderMinimap(ctx: CanvasRenderingContext2D, floor: Floor, player: Player, explored: Set<string>): void {
   const originX = ctx.canvas.width - MINIMAP_TILE_SIZE * floor.width - 8;
   const originY = 8;
   ctx.fillStyle = 'rgba(10,10,20,0.85)';

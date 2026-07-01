@@ -1,22 +1,24 @@
-export function createShake(intensity, duration) {
+import type { RngFn, ShakeState, Particle, FloatingText, TweenState, FxState } from './types.js';
+
+export function createShake(intensity: number, duration: number): ShakeState {
   return { intensity, duration, elapsed: 0 };
 }
 
-export function updateShake(shake, dt) {
+export function updateShake(shake: ShakeState | null, dt: number): ShakeState | null {
   if (!shake) return null;
   shake.elapsed += dt;
   return shake.elapsed >= shake.duration ? null : shake;
 }
 
-export function getShakeOffset(shake) {
+export function getShakeOffset(shake: ShakeState | null): { x: number; y: number } {
   if (!shake) return { x: 0, y: 0 };
   const progress = 1 - shake.elapsed / shake.duration;
   const magnitude = shake.intensity * progress;
   return { x: (Math.random() * 2 - 1) * magnitude, y: (Math.random() * 2 - 1) * magnitude };
 }
 
-export function createParticleBurst(x, y, count, rng) {
-  const particles = [];
+export function createParticleBurst(x: number, y: number, count: number, rng: RngFn): Particle[] {
+  const particles: Particle[] = [];
   for (let i = 0; i < count; i++) {
     const angle = rng() * Math.PI * 2;
     const speed = 20 + rng() * 40;
@@ -25,33 +27,33 @@ export function createParticleBurst(x, y, count, rng) {
   return particles;
 }
 
-export function updateParticles(particles, dt) {
+export function updateParticles(particles: Particle[], dt: number): Particle[] {
   return particles
     .map(p => ({ ...p, x: p.x + p.vx * dt, y: p.y + p.vy * dt, life: p.life - dt }))
     .filter(p => p.life > 0);
 }
 
-export function createFloatingText(x, y, text, color) {
+export function createFloatingText(x: number, y: number, text: string, color: string): FloatingText {
   return { x, y, text, color, life: 0.8, vy: -30 };
 }
 
-export function updateFloatingTexts(texts, dt) {
+export function updateFloatingTexts(texts: FloatingText[], dt: number): FloatingText[] {
   return texts
     .map(t => ({ ...t, y: t.y + t.vy * dt, life: t.life - dt }))
     .filter(t => t.life > 0);
 }
 
-export function createTween(from, to, duration) {
+export function createTween(from: { x: number; y: number }, to: { x: number; y: number }, duration: number): TweenState {
   return { from, to, duration, elapsed: 0 };
 }
 
-export function updateTween(tween, dt) {
+export function updateTween(tween: TweenState | null, dt: number): TweenState | null {
   if (!tween) return null;
   tween.elapsed += dt;
   return tween.elapsed >= tween.duration ? null : tween;
 }
 
-export function getTweenPosition(tween) {
+export function getTweenPosition(tween: TweenState | null): { x: number; y: number } | null {
   if (!tween) return null;
   const t = Math.min(1, tween.elapsed / tween.duration);
   return {
@@ -60,7 +62,7 @@ export function getTweenPosition(tween) {
   };
 }
 
-export function drawFx(ctx, fxState, tileSize) {
+export function drawFx(ctx: CanvasRenderingContext2D, fxState: FxState): void {
   for (const p of fxState.particles) {
     ctx.fillStyle = '#e06030';
     ctx.fillRect(p.x, p.y, 3, 3);
