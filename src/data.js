@@ -23,3 +23,24 @@ export const MONSTER_ARCHETYPES = {
     stationary: true, trapRange: 4, trapDamage: 6,
   },
 };
+
+export const BASE_ITEMS = [
+  { id: 'short-sword', type: 'weapon', name: 'Short Sword', baseDamage: 4 },
+  { id: 'long-sword', type: 'weapon', name: 'Long Sword', baseDamage: 6 },
+  { id: 'leather-armor', type: 'armor', name: 'Leather Armor', baseArmor: 2 },
+  { id: 'chain-armor', type: 'armor', name: 'Chain Armor', baseArmor: 4 },
+  { id: 'health-potion', type: 'potion', name: 'Unidentified Potion', healAmount: 15 },
+  { id: 'scroll-of-fire', type: 'scroll', name: 'Unidentified Scroll', statusEffect: 'burn' },
+];
+
+export function getLootTableForFloor(depth) {
+  return [
+    { itemId: null, weight: 50 },
+    { itemId: 'short-sword', weight: 10 },
+    { itemId: 'long-sword', weight: Math.max(2, 10 - depth) },
+    { itemId: 'leather-armor', weight: 10 },
+    { itemId: 'chain-armor', weight: Math.max(2, 10 - depth) },
+    { itemId: 'health-potion', weight: 15 },
+    { itemId: 'scroll-of-fire', weight: 8 },
+  ];
+}
