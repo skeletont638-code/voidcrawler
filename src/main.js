@@ -5,6 +5,8 @@ import { createRng } from './rng.js';
 import { Player, Monster } from './entities.js';
 import { resolveAttack, tickStatuses } from './combat.js';
 import { decideMonsterAction } from './ai.js';
+import { generateItem, rollLootTable, RARITY } from './items.js';
+import { BASE_ITEMS, getLootTableForFloor } from './data.js';
 
 const canvas = document.getElementById('game-canvas');
 canvas.width = GRID_WIDTH * TILE_SIZE;
@@ -24,6 +26,51 @@ function log(message) {
 
 let kills = 0;
 const traps = new Map(); // key "x,y" -> { damage, ownerName }
+const groundItems = new Map(); // key "x,y" -> item instance
+
+function maybeDropLoot(x, y) {
+  const lootTable = getLootTableForFloor(floor.depth);
+  const entry = rollLootTable(lootTable, rng);
+  if (!entry.itemId) return;
+  const base = BASE_ITEMS.find(b => b.id === entry.itemId);
+  const rarity = RARITY[Math.min(RARITY.length - 1, Math.floor(rng() * rng() * RARITY.length))];
+  groundItems.set(`${x},${y}`, generateItem(base, rarity, rng, floor.depth));
+}
+
+function pickUpItemUnderPlayer() {
+  const key = `${player.x},${player.y}`;
+  const item = groundItems.get(key);
+  if (!item) return;
+  groundItems.delete(key);
+  player.inventory.push(item);
+  log(`You pick up ${item.name} (${item.rarity}).`);
+}
+
+function equipOrUseItem(index) {
+  const item = player.inventory[index];
+  if (!item) return;
+  if (item.type === 'weapon' || item.type === 'armor') {
+    const slot = item.type === 'weapon' ? 'weapon' : 'armor';
+    player.equipment[slot] = item;
+    player.inventory.splice(index, 1);
+    log(`You equip ${item.name}.`);
+  } else if (item.type === 'potion') {
+    item.identified = true;
+    player.hp = Math.min(player.maxHp, player.hp + item.healAmount);
+    player.inventory.splice(index, 1);
+    log(`You drink the potion and recover ${item.healAmount} HP.`);
+  } else if (item.type === 'scroll') {
+    item.identified = true;
+    player.inventory.splice(index, 1);
+    const target = monsters.find(m => visible.has(`${m.x},${m.y}`));
+    if (target) {
+      target.statuses.push({ damagePerTick: 3, turnsRemaining: 3 });
+      log(`You read the scroll — the nearest visible ${target.archetype.name} catches fire!`);
+    } else {
+      log('You read the scroll, but no target is in sight. It fizzles.');
+    }
+  }
+}
 
 function isWalkable(x, y) {
   if (x < 0 || y < 0 || x >= floor.width || y >= floor.height) return false;
@@ -51,6 +98,7 @@ function playerAttack(target) {
     monsters = monsters.filter(m => m !== target);
     kills += 1;
     player.gainXp(10);
+    maybeDropLoot(target.x, target.y);
   }
 }
 
@@ -59,7 +107,11 @@ function monsterTurn(monster) {
   monster.statuses = remaining;
   monster.hp = Math.max(0, monster.hp - totalDamage);
   if (monster.hp === 0) {
+    log(`The ${monster.archetype.name} burns to death.`);
     monsters = monsters.filter(m => m !== monster);
+    kills += 1;
+    player.gainXp(10);
+    maybeDropLoot(monster.x, monster.y);
     return;
   }
 
@@ -135,6 +187,7 @@ function startFloor(depth) {
   player.y = spawn.y;
 
   traps.clear();
+  groundItems.clear();
 
   const archetypeIds = ['rusher', 'caster', 'trapper'];
   monsters = floor.rooms.slice(1).map((room, i) => {
@@ -156,6 +209,14 @@ window.addEventListener('keydown', (e) => {
   if (move) {
     e.preventDefault();
     tryMovePlayer(move[0], move[1]);
+    return;
+  }
+  if (e.key === 'g') {
+    pickUpItemUnderPlayer();
+    return;
+  }
+  if (/^[1-9]$/.test(e.key)) {
+    equipOrUseItem(Number(e.key) - 1);
   }
 });
 
@@ -177,6 +238,17 @@ function render() {
       ctx.globalAlpha = visible.has(key) ? 1.0 : 0.4;
       ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
     }
+  }
+  ctx.globalAlpha = 1.0;
+  const ITEM_RARITY_COLORS = { common: '#c8c8c8', uncommon: '#5ad45a', rare: '#4a90ff', legendary: '#e0a030' };
+  for (const [itemKey, item] of groundItems) {
+    if (!explored.has(itemKey)) continue;
+    const [ix, iy] = itemKey.split(',').map(Number);
+    ctx.globalAlpha = visible.has(itemKey) ? 1.0 : 0.4;
+    ctx.fillStyle = ITEM_RARITY_COLORS[item.rarity] ?? '#c8c8c8';
+    ctx.beginPath();
+    ctx.arc(ix * TILE_SIZE + TILE_SIZE / 2, iy * TILE_SIZE + TILE_SIZE / 2, 4, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.globalAlpha = 1.0;
   for (const [trapKey, trap] of traps) {
