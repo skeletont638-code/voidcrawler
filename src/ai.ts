@@ -20,7 +20,10 @@ function findHealTarget(monster: Monster, allies: Monster[]): Monster | null {
     if (ally.hp >= ally.maxHp) continue;
     const dist = chebyshev(monster.x, monster.y, ally.x, ally.y);
     if (dist > HEAL_RANGE) continue;
-    if (dist < bestDist) { bestDist = dist; best = ally; }
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = ally;
+    }
   }
   return best;
 }
@@ -28,7 +31,11 @@ function findHealTarget(monster: Monster, allies: Monster[]): Monster | null {
 export type CanSeeFn = (mx: number, my: number, px: number, py: number) => boolean;
 
 export function decideMonsterAction(
-  monster: Monster, player: Player, floor: TileGrid, canSee: CanSeeFn, allies: Monster[],
+  monster: Monster,
+  player: Player,
+  floor: TileGrid,
+  canSee: CanSeeFn,
+  allies: Monster[],
 ): MonsterAction {
   if (monster.archetype.turnsPerAction && monster.archetype.turnsPerAction > 1) {
     monster.turnCounter += 1;

@@ -29,8 +29,8 @@ export function createParticleBurst(x: number, y: number, count: number, rng: Rn
 
 export function updateParticles(particles: Particle[], dt: number): Particle[] {
   return particles
-    .map(p => ({ ...p, x: p.x + p.vx * dt, y: p.y + p.vy * dt, life: p.life - dt }))
-    .filter(p => p.life > 0);
+    .map((p) => ({ ...p, x: p.x + p.vx * dt, y: p.y + p.vy * dt, life: p.life - dt }))
+    .filter((p) => p.life > 0);
 }
 
 export function createFloatingText(x: number, y: number, text: string, color: string): FloatingText {
@@ -38,12 +38,14 @@ export function createFloatingText(x: number, y: number, text: string, color: st
 }
 
 export function updateFloatingTexts(texts: FloatingText[], dt: number): FloatingText[] {
-  return texts
-    .map(t => ({ ...t, y: t.y + t.vy * dt, life: t.life - dt }))
-    .filter(t => t.life > 0);
+  return texts.map((t) => ({ ...t, y: t.y + t.vy * dt, life: t.life - dt })).filter((t) => t.life > 0);
 }
 
-export function createTween(from: { x: number; y: number }, to: { x: number; y: number }, duration: number): TweenState {
+export function createTween(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  duration: number,
+): TweenState {
   return { from, to, duration, elapsed: 0 };
 }
 

@@ -2,13 +2,29 @@ import { TILE, idx } from './dungeon.js';
 import type { TileGrid } from './types.js';
 
 const OCTANTS: Array<[number, number, number, number]> = [
-  [1, 0, 0, 1], [0, 1, 1, 0], [0, -1, 1, 0], [-1, 0, 0, 1],
-  [-1, 0, 0, -1], [0, -1, -1, 0], [0, 1, -1, 0], [1, 0, 0, -1],
+  [1, 0, 0, 1],
+  [0, 1, 1, 0],
+  [0, -1, 1, 0],
+  [-1, 0, 0, 1],
+  [-1, 0, 0, -1],
+  [0, -1, -1, 0],
+  [0, 1, -1, 0],
+  [1, 0, 0, -1],
 ];
 
 function castLight(
-  floor: TileGrid, cx: number, cy: number, radius: number, visible: Set<string>,
-  row: number, start: number, end: number, xx: number, xy: number, yx: number, yy: number,
+  floor: TileGrid,
+  cx: number,
+  cy: number,
+  radius: number,
+  visible: Set<string>,
+  row: number,
+  start: number,
+  end: number,
+  xx: number,
+  xy: number,
+  yx: number,
+  yy: number,
 ): void {
   if (start < end) return;
   let newStart = 0;
@@ -30,8 +46,12 @@ function castLight(
         }
         const isWall = floor.grid[idx(mapX, mapY, floor.width)] === TILE.WALL;
         if (blocked) {
-          if (isWall) { newStart = rSlope; continue; }
-          blocked = false; start = newStart;
+          if (isWall) {
+            newStart = rSlope;
+            continue;
+          }
+          blocked = false;
+          start = newStart;
         } else if (isWall && i < radius) {
           blocked = true;
           castLight(floor, cx, cy, radius, visible, i + 1, start, lSlope, xx, xy, yx, yy);

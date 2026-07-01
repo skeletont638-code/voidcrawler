@@ -32,13 +32,25 @@ function tone(freq: number, duration: number, type: OscillatorType, gainPeak: nu
 
 const SFX: Record<SfxId, () => void> = {
   hit: () => tone(220, 0.08, 'square', 0.15),
-  crit: () => { tone(320, 0.1, 'square', 0.2); tone(180, 0.12, 'square', 0.15, 0.04); },
+  crit: () => {
+    tone(320, 0.1, 'square', 0.2);
+    tone(180, 0.12, 'square', 0.15, 0.04);
+  },
   miss: () => tone(140, 0.06, 'triangle', 0.08),
-  death: () => { tone(200, 0.2, 'sawtooth', 0.15); tone(100, 0.3, 'sawtooth', 0.12, 0.1); },
-  levelUp: () => { tone(440, 0.1, 'sine', 0.15); tone(660, 0.15, 'sine', 0.15, 0.1); },
+  death: () => {
+    tone(200, 0.2, 'sawtooth', 0.15);
+    tone(100, 0.3, 'sawtooth', 0.12, 0.1);
+  },
+  levelUp: () => {
+    tone(440, 0.1, 'sine', 0.15);
+    tone(660, 0.15, 'sine', 0.15, 0.1);
+  },
   pickup: () => tone(660, 0.08, 'sine', 0.1),
   trap: () => tone(90, 0.15, 'sawtooth', 0.18),
-  stairs: () => { tone(300, 0.1, 'sine', 0.1); tone(400, 0.1, 'sine', 0.1, 0.08); },
+  stairs: () => {
+    tone(300, 0.1, 'sine', 0.1);
+    tone(400, 0.1, 'sine', 0.1, 0.08);
+  },
 };
 
 export function playSound(id: SfxId): void {

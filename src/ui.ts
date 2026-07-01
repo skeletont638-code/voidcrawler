@@ -30,22 +30,34 @@ export function renderCombatLog(combatLog: string[]): void {
 
 const MINIMAP_TILE_SIZE = 4;
 
-export function renderMinimap(ctx: CanvasRenderingContext2D, floor: Floor, player: Player, explored: Set<string>): void {
+export function renderMinimap(
+  ctx: CanvasRenderingContext2D,
+  floor: Floor,
+  player: Player,
+  explored: Set<string>,
+): void {
   const originX = ctx.canvas.width - MINIMAP_TILE_SIZE * floor.width - 8;
   const originY = 8;
   ctx.fillStyle = 'rgba(10,10,20,0.85)';
-  ctx.fillRect(
-    originX - 4, originY - 4,
-    MINIMAP_TILE_SIZE * floor.width + 8, MINIMAP_TILE_SIZE * floor.height + 8,
-  );
+  ctx.fillRect(originX - 4, originY - 4, MINIMAP_TILE_SIZE * floor.width + 8, MINIMAP_TILE_SIZE * floor.height + 8);
   for (let y = 0; y < floor.height; y++) {
     for (let x = 0; x < floor.width; x++) {
       if (!explored.has(`${x},${y}`)) continue;
       const tile = floor.grid[y * floor.width + x];
       ctx.fillStyle = tile === 0 ? '#222' : '#666';
-      ctx.fillRect(originX + x * MINIMAP_TILE_SIZE, originY + y * MINIMAP_TILE_SIZE, MINIMAP_TILE_SIZE - 1, MINIMAP_TILE_SIZE - 1);
+      ctx.fillRect(
+        originX + x * MINIMAP_TILE_SIZE,
+        originY + y * MINIMAP_TILE_SIZE,
+        MINIMAP_TILE_SIZE - 1,
+        MINIMAP_TILE_SIZE - 1,
+      );
     }
   }
   ctx.fillStyle = '#e0d060';
-  ctx.fillRect(originX + player.x * MINIMAP_TILE_SIZE, originY + player.y * MINIMAP_TILE_SIZE, MINIMAP_TILE_SIZE - 1, MINIMAP_TILE_SIZE - 1);
+  ctx.fillRect(
+    originX + player.x * MINIMAP_TILE_SIZE,
+    originY + player.y * MINIMAP_TILE_SIZE,
+    MINIMAP_TILE_SIZE - 1,
+    MINIMAP_TILE_SIZE - 1,
+  );
 }

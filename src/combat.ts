@@ -6,7 +6,10 @@ export interface AttackResult {
   crit: boolean;
 }
 
-export function resolveAttack({ damage, critChance = 0, dodgeChance = 0 }: Partial<AttackStats> & { damage: number }, rng: RngFn): AttackResult {
+export function resolveAttack(
+  { damage, critChance = 0, dodgeChance = 0 }: Partial<AttackStats> & { damage: number },
+  rng: RngFn,
+): AttackResult {
   if (rng() < dodgeChance) {
     return { hit: false, damage: 0, crit: false };
   }

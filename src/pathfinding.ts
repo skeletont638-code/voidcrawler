@@ -1,7 +1,10 @@
 import { TILE, idx } from './dungeon.js';
 import type { TileGrid } from './types.js';
 
-interface Point { x: number; y: number; }
+interface Point {
+  x: number;
+  y: number;
+}
 
 function heuristic(a: Point, b: Point): number {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
@@ -20,7 +23,11 @@ export function aStar(start: Point, goal: Point, floor: TileGrid): Point[] | nul
     let best = Infinity;
     for (const [k, node] of open) {
       const f = fScore.get(k) ?? Infinity;
-      if (f < best) { best = f; currentKey = k; current = node; }
+      if (f < best) {
+        best = f;
+        currentKey = k;
+        current = node;
+      }
     }
     if (!current || !currentKey) break;
 
@@ -37,8 +44,10 @@ export function aStar(start: Point, goal: Point, floor: TileGrid): Point[] | nul
 
     open.delete(currentKey);
     const neighbors: Point[] = [
-      { x: current.x + 1, y: current.y }, { x: current.x - 1, y: current.y },
-      { x: current.x, y: current.y + 1 }, { x: current.x, y: current.y - 1 },
+      { x: current.x + 1, y: current.y },
+      { x: current.x - 1, y: current.y },
+      { x: current.x, y: current.y + 1 },
+      { x: current.x, y: current.y - 1 },
     ];
     for (const n of neighbors) {
       if (n.x < 0 || n.y < 0 || n.x >= floor.width || n.y >= floor.height) continue;

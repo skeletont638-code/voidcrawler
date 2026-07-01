@@ -1,3 +1,4 @@
+// prettier-ignore
 // Each pattern is an 8x8 grid of 0/1 flags, row-major, top-to-bottom. 1 = filled pixel.
 const PATTERNS: Record<string, number[]> = {
   player: [
@@ -82,6 +83,7 @@ const PATTERNS: Record<string, number[]> = {
   ],
 };
 
+// prettier-ignore
 const BOSS_PATTERN: number[] = [
   1, 0, 1, 1, 1, 1, 0, 1,
   1, 1, 1, 1, 1, 1, 1, 1,
@@ -95,7 +97,14 @@ const BOSS_PATTERN: number[] = [
 
 const GRID_SIZE = 8;
 
-export function drawSprite(ctx: CanvasRenderingContext2D, spriteId: string, x: number, y: number, size: number, color: string): void {
+export function drawSprite(
+  ctx: CanvasRenderingContext2D,
+  spriteId: string,
+  x: number,
+  y: number,
+  size: number,
+  color: string,
+): void {
   const pattern = PATTERNS[spriteId] ?? (spriteId.endsWith('boss') ? BOSS_PATTERN : null);
   const cell = size / GRID_SIZE;
   ctx.fillStyle = color;

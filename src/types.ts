@@ -123,10 +123,32 @@ export interface StorageLike {
   setItem(key: string, value: string): void;
 }
 
-export interface ShakeState { intensity: number; duration: number; elapsed: number; }
-export interface Particle { x: number; y: number; vx: number; vy: number; life: number; }
-export interface FloatingText { x: number; y: number; text: string; color: string; life: number; vy: number; }
-export interface TweenState<T = { x: number; y: number }> { from: T; to: T; duration: number; elapsed: number; }
+export interface ShakeState {
+  intensity: number;
+  duration: number;
+  elapsed: number;
+}
+export interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+}
+export interface FloatingText {
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  life: number;
+  vy: number;
+}
+export interface TweenState<T = { x: number; y: number }> {
+  from: T;
+  to: T;
+  duration: number;
+  elapsed: number;
+}
 export interface FxState {
   shake: ShakeState | null;
   particles: Particle[];

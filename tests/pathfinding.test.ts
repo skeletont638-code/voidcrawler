@@ -21,7 +21,7 @@ describe('aStar', () => {
     for (let y = 0; y < 8; y++) floor.grid[idx(3, y, 10)] = TILE.WALL;
     const path = aStar({ x: 0, y: 0 }, { x: 6, y: 0 }, floor);
     expect(path).not.toBeNull();
-    expect(path!.every(p => floor.grid[idx(p.x, p.y, 10)] !== TILE.WALL)).toBe(true);
+    expect(path!.every((p) => floor.grid[idx(p.x, p.y, 10)] !== TILE.WALL)).toBe(true);
   });
 
   it('returns null when the goal is fully enclosed', () => {

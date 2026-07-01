@@ -1,7 +1,7 @@
 import type { RngFn, Affix, BaseItem, Item, LootTableEntry } from './types.js';
 
 export const RARITY = ['common', 'uncommon', 'rare', 'legendary'] as const;
-export type Rarity = typeof RARITY[number];
+export type Rarity = (typeof RARITY)[number];
 
 export const RARITY_AFFIX_COUNT: Record<Rarity, number> = { common: 0, uncommon: 1, rare: 2, legendary: 3 };
 

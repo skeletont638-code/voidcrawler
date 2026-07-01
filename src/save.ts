@@ -27,14 +27,16 @@ export function saveMeta(meta: MetaProgression, storage: StorageLike = globalThi
 }
 
 export function applyRunResult(
-  meta: MetaProgression, { floorReached, kills }: { floorReached: number; kills: number },
+  meta: MetaProgression,
+  { floorReached, kills }: { floorReached: number; kills: number },
 ): { updated: MetaProgression; earned: number } {
   const earned = floorReached * 10 + kills * 2;
   return { updated: { ...meta, currency: meta.currency + earned }, earned };
 }
 
 export function purchaseClass(
-  meta: MetaProgression, classId: string,
+  meta: MetaProgression,
+  classId: string,
 ): { updated: MetaProgression; success: boolean; reason?: string } {
   const startingClass = STARTING_CLASSES[classId];
   if (!startingClass) {

@@ -9,10 +9,17 @@ import { generateItem, rollLootTable, RARITY } from './items.js';
 import { BASE_ITEMS, ACCESSORY_BASE_ITEMS, getLootTableForFloor } from './data.js';
 import { renderHUD, renderInventory, renderCombatLog, renderMinimap } from './ui.js';
 import {
-  createShake, updateShake, getShakeOffset,
-  createParticleBurst, updateParticles,
-  createFloatingText, updateFloatingTexts,
-  createTween, updateTween, getTweenPosition, drawFx,
+  createShake,
+  updateShake,
+  getShakeOffset,
+  createParticleBurst,
+  updateParticles,
+  createFloatingText,
+  updateFloatingTexts,
+  createTween,
+  updateTween,
+  getTweenPosition,
+  drawFx,
 } from './fx.js';
 import { loadMeta, saveMeta, applyRunResult, purchaseClass } from './save.js';
 import { drawSprite } from './sprites.js';
@@ -38,7 +45,14 @@ let gameState: 'playing' | 'dead' | 'victory' = 'playing';
 let screen: 'title' | 'playing' | 'dead' | 'victory' = 'title';
 let selectedClassIndex = 0;
 const classIds = Object.keys(STARTING_CLASSES);
-let lastRunSummary: { state: 'dead' | 'victory'; floor: number; biome: string; kills: number; earned: number; totalCurrency: number } | null = null;
+let lastRunSummary: {
+  state: 'dead' | 'victory';
+  floor: number;
+  biome: string;
+  kills: number;
+  earned: number;
+  totalCurrency: number;
+} | null = null;
 
 const combatLog: string[] = [];
 function log(message: string): void {
@@ -62,7 +76,7 @@ function chebyshevDistance(x1: number, y1: number, x2: number, y2: number): numb
 }
 
 function biomeForDepth(depth: number): Biome {
-  return BIOMES.find(b => b.floors.includes(depth)) ?? BIOMES[BIOMES.length - 1]!;
+  return BIOMES.find((b) => b.floors.includes(depth)) ?? BIOMES[BIOMES.length - 1]!;
 }
 
 function weightedArchetypePick(weights: Record<string, number>): string {
@@ -82,7 +96,9 @@ function grantXp(amount: number): void {
   if (perkChoices.length > 0) {
     pendingPerkChoice = perkChoices;
     playSound('levelUp');
-    log(`Level up! Choose a perk: 1) ${perkChoices[0]!.label}  2) ${perkChoices[1]!.label}  3) ${perkChoices[2]!.label}`);
+    log(
+      `Level up! Choose a perk: 1) ${perkChoices[0]!.label}  2) ${perkChoices[1]!.label}  3) ${perkChoices[2]!.label}`,
+    );
   }
 }
 
@@ -99,7 +115,7 @@ function maybeDropLoot(x: number, y: number): void {
   const lootTable = getLootTableForFloor(floor.depth);
   const entry = rollLootTable(lootTable, rng);
   if (!entry.itemId) return;
-  const base = [...BASE_ITEMS, ...ACCESSORY_BASE_ITEMS].find(b => b.id === entry.itemId)!;
+  const base = [...BASE_ITEMS, ...ACCESSORY_BASE_ITEMS].find((b) => b.id === entry.itemId)!;
   const rarity = RARITY[Math.min(RARITY.length - 1, Math.floor(rng() * rng() * RARITY.length))]!;
   groundItems.set(`${x},${y}`, generateItem(base, rarity, rng, floor.depth));
 }
@@ -130,7 +146,7 @@ function equipOrUseItem(index: number): void {
   } else if (item.type === 'scroll') {
     item.identified = true;
     player.inventory.splice(index, 1);
-    const target = monsters.find(m => visible.has(`${m.x},${m.y}`));
+    const target = monsters.find((m) => visible.has(`${m.x},${m.y}`));
     if (target) {
       target.statuses.push({ damagePerTick: 3, turnsRemaining: 3 });
       log(`You read the scroll — the nearest visible ${target.archetype.name} catches fire!`);
@@ -151,7 +167,7 @@ function isWalkableForSpawn(f: Floor, x: number, y: number): boolean {
 }
 
 function monsterAt(x: number, y: number): Monster | undefined {
-  return monsters.find(m => m.x === x && m.y === y);
+  return monsters.find((m) => m.x === x && m.y === y);
 }
 
 function canSeeBetween(x1: number, y1: number, x2: number, y2: number): boolean {
@@ -160,13 +176,22 @@ function canSeeBetween(x1: number, y1: number, x2: number, y2: number): boolean 
 
 function playerAttack(target: Monster): void {
   const result = resolveAttack(player.getAttackStats(), rng);
-  fxState.floatingTexts.push(createFloatingText(
-    target.x * TILE_SIZE, target.y * TILE_SIZE, result.hit ? String(result.damage) : 'miss',
-    result.crit ? '#ffcc33' : '#ffffff',
-  ));
-  if (result.crit) { fxState.shake = createShake(4, 0.15); playSound('crit'); }
-  else if (result.hit) { playSound('hit'); }
-  else { playSound('miss'); }
+  fxState.floatingTexts.push(
+    createFloatingText(
+      target.x * TILE_SIZE,
+      target.y * TILE_SIZE,
+      result.hit ? String(result.damage) : 'miss',
+      result.crit ? '#ffcc33' : '#ffffff',
+    ),
+  );
+  if (result.crit) {
+    fxState.shake = createShake(4, 0.15);
+    playSound('crit');
+  } else if (result.hit) {
+    playSound('hit');
+  } else {
+    playSound('miss');
+  }
   if (!result.hit) {
     log(`You miss the ${target.archetype.name}.`);
     return;
@@ -181,11 +206,13 @@ function playerAttack(target: Monster): void {
   if (target.hp === 0) {
     log(`The ${target.archetype.name} dies.`);
     playSound('death');
-    monsters = monsters.filter(m => m !== target);
+    monsters = monsters.filter((m) => m !== target);
     kills += 1;
     grantXp(10);
     maybeDropLoot(target.x, target.y);
-    fxState.particles.push(...createParticleBurst(target.x * TILE_SIZE + TILE_SIZE / 2, target.y * TILE_SIZE + TILE_SIZE / 2, 12, rng));
+    fxState.particles.push(
+      ...createParticleBurst(target.x * TILE_SIZE + TILE_SIZE / 2, target.y * TILE_SIZE + TILE_SIZE / 2, 12, rng),
+    );
     if (target.archetype.id === biomeForDepth(floor.depth).bossArchetypeId && floor.depth === 9) {
       endRun('victory');
     }
@@ -199,14 +226,20 @@ function monsterTurn(monster: Monster): void {
   if (monster.hp === 0) {
     log(`The ${monster.archetype.name} burns to death.`);
     playSound('death');
-    monsters = monsters.filter(m => m !== monster);
+    monsters = monsters.filter((m) => m !== monster);
     kills += 1;
     grantXp(10);
     maybeDropLoot(monster.x, monster.y);
     return;
   }
 
-  const action = decideMonsterAction(monster, player, floor, canSeeBetween, monsters.filter(m => m !== monster));
+  const action = decideMonsterAction(
+    monster,
+    player,
+    floor,
+    canSeeBetween,
+    monsters.filter((m) => m !== monster),
+  );
   if (action.type === 'attack' || action.type === 'rangedAttack') {
     const result = resolveAttack(monster.getAttackStats(), rng);
     if (!result.hit) {
@@ -214,14 +247,15 @@ function monsterTurn(monster: Monster): void {
     } else {
       player.hp = Math.max(0, player.hp - result.damage);
       log(`The ${monster.archetype.name} hits you for ${result.damage}${result.crit ? ' (crit!)' : ''}.`);
-      fxState.floatingTexts.push(createFloatingText(player.x * TILE_SIZE, player.y * TILE_SIZE, String(result.damage), '#ff6666'));
+      fxState.floatingTexts.push(
+        createFloatingText(player.x * TILE_SIZE, player.y * TILE_SIZE, String(result.damage), '#ff6666'),
+      );
       fxState.shake = createShake(3, 0.15);
       playSound(result.crit ? 'crit' : 'hit');
     }
   } else if (action.type === 'move') {
     const to = action.to!;
-    if (isWalkable(to.x, to.y) && !monsterAt(to.x, to.y)
-        && !(to.x === player.x && to.y === player.y)) {
+    if (isWalkable(to.x, to.y) && !monsterAt(to.x, to.y) && !(to.x === player.x && to.y === player.y)) {
       const moveFrom = { x: monster.x, y: monster.y };
       monster.x = to.x;
       monster.y = to.y;
@@ -238,7 +272,9 @@ function monsterTurn(monster: Monster): void {
     const healAmount = Math.round(target.maxHp * 0.25);
     target.hp = Math.min(target.maxHp, target.hp + healAmount);
     log(`The ${monster.archetype.name} heals the ${target.archetype.name} for ${healAmount}.`);
-    fxState.floatingTexts.push(createFloatingText(target.x * TILE_SIZE, target.y * TILE_SIZE, `+${healAmount}`, '#6adf6a'));
+    fxState.floatingTexts.push(
+      createFloatingText(target.x * TILE_SIZE, target.y * TILE_SIZE, `+${healAmount}`, '#6adf6a'),
+    );
   }
 }
 
@@ -249,12 +285,18 @@ function endRun(state: 'dead' | 'victory'): void {
   meta = updated;
   saveMeta(meta);
   lastRunSummary = {
-    state, floor: floor.depth, biome: biomeForDepth(floor.depth).name,
-    kills, earned, totalCurrency: meta.currency,
+    state,
+    floor: floor.depth,
+    biome: biomeForDepth(floor.depth).name,
+    kills,
+    earned,
+    totalCurrency: meta.currency,
   };
-  log(state === 'dead'
-    ? `You died on floor ${floor.depth}. Earned ${earned} currency (total ${meta.currency}).`
-    : `You escaped the depths! Earned ${earned} currency (total ${meta.currency}).`);
+  log(
+    state === 'dead'
+      ? `You died on floor ${floor.depth}. Earned ${earned} currency (total ${meta.currency}).`
+      : `You escaped the depths! Earned ${earned} currency (total ${meta.currency}).`,
+  );
 }
 
 function triggerTrapUnderPlayer(): void {
@@ -310,7 +352,10 @@ function tryMovePlayer(dx: number, dy: number): void {
   }
   if (!isWalkable(nx, ny)) return;
   const moveFrom = { x: player.x, y: player.y };
-  takeTurn(() => { player.x = nx; player.y = ny; });
+  takeTurn(() => {
+    player.x = nx;
+    player.y = ny;
+  });
   playerTween = createTween(moveFrom, { x: player.x, y: player.y }, 0.12);
 
   const tile = floor.grid[idx(player.x, player.y, floor.width)];
@@ -370,13 +415,15 @@ function renderTitleScreen(): void {
   if (screen !== 'title') return;
   document.getElementById('title-currency')!.textContent = `Currency: ${meta.currency}`;
   const list = document.getElementById('class-list')!;
-  list.innerHTML = classIds.map((id, i) => {
-    const cls = STARTING_CLASSES[id]!;
-    const unlocked = meta.unlockedClasses.includes(id);
-    const marker = i === selectedClassIndex ? '&gt; ' : '&nbsp;&nbsp;';
-    const status = unlocked ? '' : ` (locked — ${cls.unlockCost} currency)`;
-    return `<div>${marker}${cls.name} (HP ${cls.baseHp}, STR ${cls.str}, DEX ${cls.dex}, VIT ${cls.vit})${status}</div>`;
-  }).join('');
+  list.innerHTML = classIds
+    .map((id, i) => {
+      const cls = STARTING_CLASSES[id]!;
+      const unlocked = meta.unlockedClasses.includes(id);
+      const marker = i === selectedClassIndex ? '&gt; ' : '&nbsp;&nbsp;';
+      const status = unlocked ? '' : ` (locked — ${cls.unlockCost} currency)`;
+      return `<div>${marker}${cls.name} (HP ${cls.baseHp}, STR ${cls.str}, DEX ${cls.dex}, VIT ${cls.vit})${status}</div>`;
+    })
+    .join('');
 }
 
 function renderPerkChoice(): void {
@@ -411,13 +458,22 @@ function startRun(classId: string): void {
 let inventoryOpen = false;
 
 const KEY_MOVES: Record<string, [number, number]> = {
-  ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
 };
 
 window.addEventListener('keydown', (e: KeyboardEvent) => {
   if (screen === 'title') {
-    if (e.key === 'ArrowUp') { selectedClassIndex = (selectedClassIndex - 1 + classIds.length) % classIds.length; return; }
-    if (e.key === 'ArrowDown') { selectedClassIndex = (selectedClassIndex + 1) % classIds.length; return; }
+    if (e.key === 'ArrowUp') {
+      selectedClassIndex = (selectedClassIndex - 1 + classIds.length) % classIds.length;
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      selectedClassIndex = (selectedClassIndex + 1) % classIds.length;
+      return;
+    }
     if (e.key === 'b') {
       const classId = classIds[selectedClassIndex]!;
       const result = purchaseClass(meta, classId);
@@ -483,7 +539,12 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
   }
 });
 
-const ITEM_RARITY_COLORS: Record<string, string> = { common: '#c8c8c8', uncommon: '#5ad45a', rare: '#4a90ff', legendary: '#e0a030' };
+const ITEM_RARITY_COLORS: Record<string, string> = {
+  common: '#c8c8c8',
+  uncommon: '#5ad45a',
+  rare: '#4a90ff',
+  legendary: '#e0a030',
+};
 
 function render(): void {
   document.getElementById('title-screen')!.classList.add('hidden');
@@ -541,10 +602,24 @@ function render(): void {
     if (m.archetype.invisible && chebyshevDistance(m.x, m.y, player.x, player.y) > 1) continue;
     const tween = monsterTweens.get(m) ?? null;
     const pixelPos = tween ? getTweenPosition(tween)! : { x: m.x, y: m.y };
-    drawSprite(ctx, m.archetype.id, pixelPos.x * TILE_SIZE + 4, pixelPos.y * TILE_SIZE + 4, TILE_SIZE - 8, m.archetype.color);
+    drawSprite(
+      ctx,
+      m.archetype.id,
+      pixelPos.x * TILE_SIZE + 4,
+      pixelPos.y * TILE_SIZE + 4,
+      TILE_SIZE - 8,
+      m.archetype.color,
+    );
   }
   const playerPixelPos = playerTween ? getTweenPosition(playerTween)! : { x: player.x, y: player.y };
-  drawSprite(ctx, 'player', playerPixelPos.x * TILE_SIZE + 4, playerPixelPos.y * TILE_SIZE + 4, TILE_SIZE - 8, '#e0d060');
+  drawSprite(
+    ctx,
+    'player',
+    playerPixelPos.x * TILE_SIZE + 4,
+    playerPixelPos.y * TILE_SIZE + 4,
+    TILE_SIZE - 8,
+    '#e0d060',
+  );
   drawFx(ctx, fxState);
   ctx.restore();
 

@@ -36,10 +36,10 @@ describe('perk offers', () => {
     const { perkChoices: firstLevelChoices } = player.gainXp(xpForNextLevel(1));
     expect(player.level).toBe(2);
     expect(firstLevelChoices.length).toBe(3);
-    const uniqueIds = new Set(firstLevelChoices.map(p => p.id));
+    const uniqueIds = new Set(firstLevelChoices.map((p) => p.id));
     expect(uniqueIds.size).toBe(3);
     for (const perk of firstLevelChoices) {
-      expect(PERK_POOL.some(p => p.id === perk.id)).toBe(true);
+      expect(PERK_POOL.some((p) => p.id === perk.id)).toBe(true);
     }
 
     const { perkChoices: secondLevelChoices } = player.gainXp(xpForNextLevel(2));
@@ -49,11 +49,11 @@ describe('perk offers', () => {
 
   it('applying a perk mutates the player as described', () => {
     const player = new Player(STARTING_CLASSES.adventurer!);
-    const lifesteal = PERK_POOL.find(p => p.id === 'lifesteal')!;
+    const lifesteal = PERK_POOL.find((p) => p.id === 'lifesteal')!;
     lifesteal.apply(player);
     expect(player.perks).toContain('lifesteal');
 
-    const vitality = PERK_POOL.find(p => p.id === 'vitality')!;
+    const vitality = PERK_POOL.find((p) => p.id === 'vitality')!;
     const before = player.maxHp;
     vitality.apply(player);
     expect(player.maxHp).toBeGreaterThan(before);

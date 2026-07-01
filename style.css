@@ -1,4 +1,6 @@
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 :root {
   --bg: #0a0a0f;
@@ -20,64 +22,131 @@ body {
   min-height: 100vh;
 }
 
-#game-root { position: relative; }
-#game-canvas { background: #000; display: block; image-rendering: pixelated; }
+#game-root {
+  position: relative;
+}
+#game-canvas {
+  background: #000;
+  display: block;
+  image-rendering: pixelated;
+}
 
 #hud {
-  position: absolute; top: 8px; left: 8px;
-  background: var(--panel-bg); border: 1px solid var(--border); border-radius: 3px;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
   padding: 6px 10px;
   font-family: 'Courier New', monospace;
-  font-size: 13px; line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.5;
   text-shadow: 1px 1px 2px #000;
 }
 
 #combat-log {
-  position: absolute; bottom: 8px; left: 8px;
-  background: var(--panel-bg); border: 1px solid var(--border); border-radius: 3px;
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
   padding: 6px 10px;
   font-family: 'Courier New', monospace;
-  font-size: 12px; max-width: 340px; max-height: 90px;
-  overflow: hidden; opacity: 0.9;
+  font-size: 12px;
+  max-width: 340px;
+  max-height: 90px;
+  overflow: hidden;
+  opacity: 0.9;
 }
 
 #inventory-panel {
-  position: absolute; top: 8px; right: 8px;
-  background: var(--panel-bg); border: 1px solid var(--border); border-radius: 3px;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
   padding: 8px 10px;
   font-family: 'Courier New', monospace;
-  font-size: 12px; min-width: 200px;
+  font-size: 12px;
+  min-width: 200px;
 }
 
-.hidden { display: none !important; }
+.hidden {
+  display: none !important;
+}
 
 #title-screen {
-  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: var(--bg); z-index: 10;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  z-index: 10;
 }
 #title-screen h1 {
-  font-size: 36px; letter-spacing: 6px; color: var(--accent);
+  font-size: 36px;
+  letter-spacing: 6px;
+  color: var(--accent);
   text-shadow: 0 0 12px rgba(201, 168, 118, 0.4);
   margin-bottom: 4px;
 }
-#title-currency { color: var(--text-dim); font-size: 13px; margin: 4px 0 16px; }
+#title-currency {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin: 4px 0 16px;
+}
 #class-list {
-  background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px;
-  padding: 12px 20px; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.8;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px 20px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.8;
 }
-.title-hint { font-size: 12px; color: var(--text-dim); margin-top: 16px; }
+.title-hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 16px;
+}
 
-#perk-choice, #run-summary {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px;
-  padding: 18px 28px; text-align: center; z-index: 5;
+#perk-choice,
+#run-summary {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 18px 28px;
+  text-align: center;
+  z-index: 5;
 }
-#perk-choice h2, #run-summary h2 {
-  font-size: 18px; margin: 0 0 10px; color: var(--accent);
+#perk-choice h2,
+#run-summary h2 {
+  font-size: 18px;
+  margin: 0 0 10px;
+  color: var(--accent);
 }
-#perk-options { font-family: 'Courier New', monospace; font-size: 13px; }
-#perk-options div { padding: 4px 0; }
+#perk-options {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+#perk-options div {
+  padding: 4px 0;
+}
 #run-summary-stats {
-  font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.7; color: var(--text);
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
 }

@@ -12,7 +12,7 @@ describe('rollAffixes', () => {
       const rng = stubRng([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]);
       const affixes = rollAffixes(rarity, rng, 1);
       expect(affixes.length).toBe(RARITY_AFFIX_COUNT[rarity]);
-      const keys = affixes.map(a => a.key);
+      const keys = affixes.map((a) => a.key);
       expect(new Set(keys).size).toBe(keys.length);
     }
   });

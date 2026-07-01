@@ -15,7 +15,8 @@ describe('decideMonsterAction', () => {
     const floor = openFloor(10, 10);
     const monster = new Monster(MONSTER_ARCHETYPES.rusher!, 5, 5);
     const player = new Player(STARTING_CLASSES.adventurer!);
-    player.x = 8; player.y = 8;
+    player.x = 8;
+    player.y = 8;
     decideMonsterAction(monster, player, floor, neverSee, []);
     expect(monster.state).toBe('idle');
   });
@@ -24,7 +25,8 @@ describe('decideMonsterAction', () => {
     const floor = openFloor(10, 10);
     const monster = new Monster(MONSTER_ARCHETYPES.rusher!, 5, 5);
     const player = new Player(STARTING_CLASSES.adventurer!);
-    player.x = 5; player.y = 8;
+    player.x = 5;
+    player.y = 8;
     const action = decideMonsterAction(monster, player, floor, alwaysSee, []);
     expect(monster.state).toBe('chase');
     expect(action.type).toBe('move');
@@ -34,7 +36,8 @@ describe('decideMonsterAction', () => {
     const floor = openFloor(10, 10);
     const monster = new Monster(MONSTER_ARCHETYPES.rusher!, 5, 5);
     const player = new Player(STARTING_CLASSES.adventurer!);
-    player.x = 6; player.y = 5;
+    player.x = 6;
+    player.y = 5;
     const action = decideMonsterAction(monster, player, floor, alwaysSee, []);
     expect(action.type).toBe('attack');
     expect(action.target).toBe(player);
@@ -45,7 +48,8 @@ describe('decideMonsterAction', () => {
     const monster = new Monster(MONSTER_ARCHETYPES.caster!, 5, 5);
     monster.hp = monster.maxHp * 0.1;
     const player = new Player(STARTING_CLASSES.adventurer!);
-    player.x = 6; player.y = 5;
+    player.x = 6;
+    player.y = 5;
     decideMonsterAction(monster, player, floor, alwaysSee, []);
     expect(monster.state).toBe('flee');
   });
@@ -54,7 +58,8 @@ describe('decideMonsterAction', () => {
     const floor = openFloor(10, 10);
     const monster = new Monster(MONSTER_ARCHETYPES.trapper!, 5, 5);
     const player = new Player(STARTING_CLASSES.adventurer!);
-    player.x = 5; player.y = 8;
+    player.x = 5;
+    player.y = 8;
     const action = decideMonsterAction(monster, player, floor, alwaysSee, []);
     expect(action.type).toBe('placeTrap');
     expect(monster.x).toBe(5);
@@ -66,7 +71,8 @@ describe('decideMonsterAction', () => {
     const floor = openFloor(10, 10);
     const monster = new Monster(MONSTER_ARCHETYPES.trapper!, 5, 5);
     const player = new Player(STARTING_CLASSES.adventurer!);
-    player.x = 6; player.y = 5;
+    player.x = 6;
+    player.y = 5;
     const action = decideMonsterAction(monster, player, floor, alwaysSee, []);
     expect(action.type).toBe('attack');
   });
@@ -77,7 +83,8 @@ describe('brute turn-skipping', () => {
     const floor = openFloor(10, 10);
     const monster = new Monster(MONSTER_ARCHETYPES.brute!, 5, 5);
     const player = new Player(STARTING_CLASSES.adventurer!);
-    player.x = 5; player.y = 8;
+    player.x = 5;
+    player.y = 8;
     const first = decideMonsterAction(monster, player, floor, alwaysSee, []);
     expect(first.type).toBe('wait');
     const second = decideMonsterAction(monster, player, floor, alwaysSee, []);
@@ -90,7 +97,8 @@ describe('stalker invisibility flag', () => {
     const floor = openFloor(10, 10);
     const monster = new Monster(MONSTER_ARCHETYPES.stalker!, 5, 5);
     const player = new Player(STARTING_CLASSES.adventurer!);
-    player.x = 5; player.y = 8;
+    player.x = 5;
+    player.y = 8;
     expect(monster.archetype.invisible).toBe(true);
     const action = decideMonsterAction(monster, player, floor, alwaysSee, []);
     expect(action.type).toBe('move');
@@ -104,7 +112,8 @@ describe('shaman support behavior', () => {
     const ally = new Monster(MONSTER_ARCHETYPES.rusher!, 6, 5);
     ally.hp = 1;
     const player = new Player(STARTING_CLASSES.adventurer!);
-    player.x = 5; player.y = 9;
+    player.x = 5;
+    player.y = 9;
     const action = decideMonsterAction(shaman, player, floor, alwaysSee, [ally]);
     expect(action.type).toBe('heal');
     expect(action.healTarget).toBe(ally);
@@ -115,7 +124,8 @@ describe('shaman support behavior', () => {
     const shaman = new Monster(MONSTER_ARCHETYPES.shaman!, 5, 5);
     const healthyAlly = new Monster(MONSTER_ARCHETYPES.rusher!, 6, 5);
     const player = new Player(STARTING_CLASSES.adventurer!);
-    player.x = 5; player.y = 8;
+    player.x = 5;
+    player.y = 8;
     const action = decideMonsterAction(shaman, player, floor, alwaysSee, [healthyAlly]);
     expect(action.type).toBe('move');
   });

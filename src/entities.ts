@@ -26,7 +26,11 @@ export class Player {
   vit: number;
   perks: string[] = [];
   inventory: Item[] = [];
-  equipment: { weapon: Item | null; armor: Item | null; accessory: Item | null } = { weapon: null, armor: null, accessory: null };
+  equipment: { weapon: Item | null; armor: Item | null; accessory: Item | null } = {
+    weapon: null,
+    armor: null,
+    accessory: null,
+  };
   x = 0;
   y = 0;
   statuses: StatusEffect[] = [];
@@ -61,11 +65,15 @@ export class Player {
     const armor = this.equipment.armor;
     const weaponDamage = weapon
       ? weapon.affixes.reduce((sum, a) => sum + (a.key === 'damage' ? a.value : 0), weapon.baseDamage ?? 3)
-      : (2 + this.str);
-    const critChance = 0.05 + this.dex * 0.01 + (weapon?.affixes ?? [])
-      .reduce((sum, a) => sum + (a.key === 'critChance' ? a.value : 0), 0);
-    const dodgeChance = 0.03 + this.dex * 0.005 + (armor?.affixes ?? [])
-      .reduce((sum, a) => sum + (a.key === 'resistance' ? a.value * 0.2 : 0), 0);
+      : 2 + this.str;
+    const critChance =
+      0.05 +
+      this.dex * 0.01 +
+      (weapon?.affixes ?? []).reduce((sum, a) => sum + (a.key === 'critChance' ? a.value : 0), 0);
+    const dodgeChance =
+      0.03 +
+      this.dex * 0.005 +
+      (armor?.affixes ?? []).reduce((sum, a) => sum + (a.key === 'resistance' ? a.value * 0.2 : 0), 0);
     return { damage: weaponDamage, critChance, dodgeChance };
   }
 
@@ -74,7 +82,8 @@ export class Player {
   }
 
   getXpMultiplier(): number {
-    const bonus = this.equipment.accessory?.affixes.reduce((sum, a) => sum + (a.key === 'xpGain' ? a.value : 0), 0) ?? 0;
+    const bonus =
+      this.equipment.accessory?.affixes.reduce((sum, a) => sum + (a.key === 'xpGain' ? a.value : 0), 0) ?? 0;
     return 1 + bonus;
   }
 }
@@ -89,7 +98,11 @@ export class Monster {
   lastKnownPlayerPos: { x: number; y: number } | null = null;
   turnCounter = 0;
 
-  constructor(public archetype: MonsterArchetype, x: number, y: number) {
+  constructor(
+    public archetype: MonsterArchetype,
+    x: number,
+    y: number,
+  ) {
     this.hp = archetype.hp;
     this.maxHp = archetype.hp;
     this.x = x;

@@ -5,7 +5,9 @@ function fakeStorage(initial: Record<string, string> = {}) {
   const store: Record<string, string> = { ...initial };
   return {
     getItem: (k: string) => (k in store ? store[k]! : null),
-    setItem: (k: string, v: string) => { store[k] = v; },
+    setItem: (k: string, v: string) => {
+      store[k] = v;
+    },
   };
 }
 
@@ -23,7 +25,9 @@ describe('loadMeta', () => {
   });
 
   it('defaults mutedAudio to false for saves that predate the field', () => {
-    const storage = fakeStorage({ 'voidcrawler-meta-v1': JSON.stringify({ currency: 5, unlockedClasses: ['adventurer'], unlockedPerks: [] }) });
+    const storage = fakeStorage({
+      'voidcrawler-meta-v1': JSON.stringify({ currency: 5, unlockedClasses: ['adventurer'], unlockedPerks: [] }),
+    });
     const meta = loadMeta(storage);
     expect(meta.mutedAudio).toBe(false);
     expect(meta.currency).toBe(5);
