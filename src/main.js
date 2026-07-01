@@ -7,6 +7,7 @@ import { resolveAttack, tickStatuses } from './combat.js';
 import { decideMonsterAction } from './ai.js';
 import { generateItem, rollLootTable, RARITY } from './items.js';
 import { BASE_ITEMS, getLootTableForFloor } from './data.js';
+import { renderHUD, renderInventory, renderCombatLog, renderMinimap } from './ui.js';
 
 const canvas = document.getElementById('game-canvas');
 canvas.width = GRID_WIDTH * TILE_SIZE;
@@ -200,6 +201,8 @@ function startFloor(depth) {
   for (const key of visible) explored.add(key);
 }
 
+let inventoryOpen = false;
+
 const KEY_MOVES = {
   ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
 };
@@ -213,6 +216,15 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === 'g') {
     pickUpItemUnderPlayer();
+    return;
+  }
+  if (e.key === 'i') {
+    inventoryOpen = !inventoryOpen;
+    return;
+  }
+  if (e.key === 'p' && player.statPoints > 0) {
+    player.str += 1;
+    player.statPoints -= 1;
     return;
   }
   if (/^[1-9]$/.test(e.key)) {
@@ -272,9 +284,10 @@ function render() {
   ctx.fillStyle = '#e0d060';
   ctx.fillRect(player.x * TILE_SIZE + 4, player.y * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
 
-  const hud = document.getElementById('hud');
-  hud.textContent = `HP ${player.hp}/${player.maxHp}  Lv ${player.level}  Floor ${floor.depth}`;
-  document.getElementById('combat-log').textContent = combatLog.join('\n');
+  renderHUD(player, floor);
+  renderInventory(player, inventoryOpen);
+  renderCombatLog(combatLog);
+  renderMinimap(ctx, floor, player, explored);
 }
 
 function loop() {
