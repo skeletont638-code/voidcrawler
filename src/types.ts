@@ -115,6 +115,7 @@ export interface MetaProgression {
   currency: number;
   unlockedClasses: string[];
   unlockedPerks: string[];
+  mutedAudio: boolean;
 }
 
 export interface StorageLike {

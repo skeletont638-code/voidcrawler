@@ -14,8 +14,9 @@ import {
   createFloatingText, updateFloatingTexts,
   createTween, updateTween, getTweenPosition, drawFx,
 } from './fx.js';
-import { loadMeta, saveMeta, applyRunResult } from './save.js';
+import { loadMeta, saveMeta, applyRunResult, purchaseClass } from './save.js';
 import { drawSprite } from './sprites.js';
+import { playSound, setMuted, isMuted } from './audio.js';
 import type { Floor, Item, FxState, TweenState, Biome, Perk } from './types.js';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
@@ -31,8 +32,13 @@ let monsters: Monster[];
 let explored: Set<string>;
 let visible: Set<string>;
 
-const meta = loadMeta();
+let meta = loadMeta();
+setMuted(meta.mutedAudio);
 let gameState: 'playing' | 'dead' | 'victory' = 'playing';
+let screen: 'title' | 'playing' | 'dead' | 'victory' = 'title';
+let selectedClassIndex = 0;
+const classIds = Object.keys(STARTING_CLASSES);
+let lastRunSummary: { state: 'dead' | 'victory'; floor: number; biome: string; kills: number; earned: number; totalCurrency: number } | null = null;
 
 const combatLog: string[] = [];
 function log(message: string): void {
@@ -75,6 +81,7 @@ function grantXp(amount: number): void {
   const { perkChoices } = player.gainXp(scaled);
   if (perkChoices.length > 0) {
     pendingPerkChoice = perkChoices;
+    playSound('levelUp');
     log(`Level up! Choose a perk: 1) ${perkChoices[0]!.label}  2) ${perkChoices[1]!.label}  3) ${perkChoices[2]!.label}`);
   }
 }
@@ -103,6 +110,7 @@ function pickUpItemUnderPlayer(): void {
   if (!item) return;
   groundItems.delete(key);
   player.inventory.push(item);
+  playSound('pickup');
   log(`You pick up ${item.name} (${item.rarity}).`);
 }
 
@@ -156,7 +164,9 @@ function playerAttack(target: Monster): void {
     target.x * TILE_SIZE, target.y * TILE_SIZE, result.hit ? String(result.damage) : 'miss',
     result.crit ? '#ffcc33' : '#ffffff',
   ));
-  if (result.crit) fxState.shake = createShake(4, 0.15);
+  if (result.crit) { fxState.shake = createShake(4, 0.15); playSound('crit'); }
+  else if (result.hit) { playSound('hit'); }
+  else { playSound('miss'); }
   if (!result.hit) {
     log(`You miss the ${target.archetype.name}.`);
     return;
@@ -170,6 +180,7 @@ function playerAttack(target: Monster): void {
   }
   if (target.hp === 0) {
     log(`The ${target.archetype.name} dies.`);
+    playSound('death');
     monsters = monsters.filter(m => m !== target);
     kills += 1;
     grantXp(10);
@@ -187,6 +198,7 @@ function monsterTurn(monster: Monster): void {
   monster.hp = Math.max(0, monster.hp - totalDamage);
   if (monster.hp === 0) {
     log(`The ${monster.archetype.name} burns to death.`);
+    playSound('death');
     monsters = monsters.filter(m => m !== monster);
     kills += 1;
     grantXp(10);
@@ -204,6 +216,7 @@ function monsterTurn(monster: Monster): void {
       log(`The ${monster.archetype.name} hits you for ${result.damage}${result.crit ? ' (crit!)' : ''}.`);
       fxState.floatingTexts.push(createFloatingText(player.x * TILE_SIZE, player.y * TILE_SIZE, String(result.damage), '#ff6666'));
       fxState.shake = createShake(3, 0.15);
+      playSound(result.crit ? 'crit' : 'hit');
     }
   } else if (action.type === 'move') {
     const to = action.to!;
@@ -231,11 +244,17 @@ function monsterTurn(monster: Monster): void {
 
 function endRun(state: 'dead' | 'victory'): void {
   gameState = state;
+  screen = state;
   const { updated, earned } = applyRunResult(meta, { floorReached: floor.depth, kills });
-  saveMeta(updated);
+  meta = updated;
+  saveMeta(meta);
+  lastRunSummary = {
+    state, floor: floor.depth, biome: biomeForDepth(floor.depth).name,
+    kills, earned, totalCurrency: meta.currency,
+  };
   log(state === 'dead'
-    ? `You died on floor ${floor.depth}. Earned ${earned} currency (total ${updated.currency}).`
-    : `You escaped the depths! Earned ${earned} currency (total ${updated.currency}).`);
+    ? `You died on floor ${floor.depth}. Earned ${earned} currency (total ${meta.currency}).`
+    : `You escaped the depths! Earned ${earned} currency (total ${meta.currency}).`);
 }
 
 function triggerTrapUnderPlayer(): void {
@@ -245,6 +264,7 @@ function triggerTrapUnderPlayer(): void {
   traps.delete(trapKey);
   const trapDamage = Math.max(0, trap.damage - (player.perks.includes('resilience') ? 2 : 0));
   player.hp = Math.max(0, player.hp - trapDamage);
+  playSound('trap');
   log(`You trigger a trap set by the ${trap.ownerName}! You take ${trapDamage} damage.`);
 }
 
@@ -295,6 +315,7 @@ function tryMovePlayer(dx: number, dy: number): void {
 
   const tile = floor.grid[idx(player.x, player.y, floor.width)];
   if (tile === TILE.STAIRS_DOWN && gameState === 'playing' && floor.depth < 9) {
+    playSound('stairs');
     log(`You descend to floor ${floor.depth + 1}.`);
     startFloor(floor.depth + 1);
   }
@@ -343,6 +364,50 @@ function startFloor(depth: number): void {
   for (const key of visible) explored.add(key);
 }
 
+function renderTitleScreen(): void {
+  const panel = document.getElementById('title-screen')!;
+  panel.classList.toggle('hidden', screen !== 'title');
+  if (screen !== 'title') return;
+  document.getElementById('title-currency')!.textContent = `Currency: ${meta.currency}`;
+  const list = document.getElementById('class-list')!;
+  list.innerHTML = classIds.map((id, i) => {
+    const cls = STARTING_CLASSES[id]!;
+    const unlocked = meta.unlockedClasses.includes(id);
+    const marker = i === selectedClassIndex ? '&gt; ' : '&nbsp;&nbsp;';
+    const status = unlocked ? '' : ` (locked — ${cls.unlockCost} currency)`;
+    return `<div>${marker}${cls.name} (HP ${cls.baseHp}, STR ${cls.str}, DEX ${cls.dex}, VIT ${cls.vit})${status}</div>`;
+  }).join('');
+}
+
+function renderPerkChoice(): void {
+  const panel = document.getElementById('perk-choice')!;
+  panel.classList.toggle('hidden', !pendingPerkChoice);
+  if (!pendingPerkChoice) return;
+  const optionsEl = document.getElementById('perk-options')!;
+  optionsEl.innerHTML = pendingPerkChoice.map((perk, i) => `<div>${i + 1}) ${perk.label}</div>`).join('');
+}
+
+function renderRunSummary(): void {
+  const panel = document.getElementById('run-summary')!;
+  panel.classList.toggle('hidden', !lastRunSummary);
+  if (!lastRunSummary) return;
+  const s = lastRunSummary;
+  document.getElementById('run-summary-title')!.textContent = s.state === 'dead' ? 'You Died' : 'You Escaped!';
+  document.getElementById('run-summary-stats')!.innerHTML = [
+    `Reached floor ${s.floor} (${s.biome})`,
+    `Kills: ${s.kills}`,
+    `Currency earned: ${s.earned} (total: ${s.totalCurrency})`,
+  ].join('<br>');
+}
+
+function startRun(classId: string): void {
+  const chosenClass = STARTING_CLASSES[classId]!;
+  Object.assign(player, new Player(chosenClass));
+  screen = 'playing';
+  gameState = 'playing';
+  startFloor(1);
+}
+
 let inventoryOpen = false;
 
 const KEY_MOVES: Record<string, [number, number]> = {
@@ -350,6 +415,37 @@ const KEY_MOVES: Record<string, [number, number]> = {
 };
 
 window.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (screen === 'title') {
+    if (e.key === 'ArrowUp') { selectedClassIndex = (selectedClassIndex - 1 + classIds.length) % classIds.length; return; }
+    if (e.key === 'ArrowDown') { selectedClassIndex = (selectedClassIndex + 1) % classIds.length; return; }
+    if (e.key === 'b') {
+      const classId = classIds[selectedClassIndex]!;
+      const result = purchaseClass(meta, classId);
+      if (result.success) {
+        meta = result.updated;
+        saveMeta(meta);
+        log(`Unlocked ${STARTING_CLASSES[classId]!.name}!`);
+      } else {
+        log(`Can't unlock: ${result.reason}.`);
+      }
+      return;
+    }
+    if (e.key === 'm') {
+      const next = !isMuted();
+      setMuted(next);
+      meta = { ...meta, mutedAudio: next };
+      saveMeta(meta);
+      return;
+    }
+    if (e.key === 'Enter') {
+      const classId = classIds[selectedClassIndex]!;
+      if (meta.unlockedClasses.includes(classId)) {
+        startRun(classId);
+      }
+      return;
+    }
+    return;
+  }
   if (gameState !== 'playing') {
     if (e.key === 'Enter') location.reload();
     return;
@@ -374,6 +470,14 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
     inventoryOpen = !inventoryOpen;
     return;
   }
+  if (e.key === 'm') {
+    const next = !isMuted();
+    setMuted(next);
+    meta = { ...meta, mutedAudio: next };
+    saveMeta(meta);
+    log(next ? 'Sound muted.' : 'Sound unmuted.');
+    return;
+  }
   if (/^[1-9]$/.test(e.key)) {
     equipOrUseItem(Number(e.key) - 1);
   }
@@ -382,6 +486,7 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
 const ITEM_RARITY_COLORS: Record<string, string> = { common: '#c8c8c8', uncommon: '#5ad45a', rare: '#4a90ff', legendary: '#e0a030' };
 
 function render(): void {
+  document.getElementById('title-screen')!.classList.add('hidden');
   const shakeOffset = getShakeOffset(fxState.shake);
   ctx.save();
   ctx.translate(shakeOffset.x, shakeOffset.y);
@@ -447,9 +552,16 @@ function render(): void {
   renderInventory(player, inventoryOpen);
   renderCombatLog(combatLog);
   renderMinimap(ctx, floor, player, explored);
+  renderPerkChoice();
+  renderRunSummary();
 }
 
 function loop(): void {
+  if (screen === 'title') {
+    renderTitleScreen();
+    requestAnimationFrame(loop);
+    return;
+  }
   const now = performance.now();
   const dt = Math.min(0.1, (now - lastFrameTime) / 1000);
   lastFrameTime = now;
@@ -468,5 +580,4 @@ function loop(): void {
   requestAnimationFrame(loop);
 }
 
-startFloor(1);
 requestAnimationFrame(loop);

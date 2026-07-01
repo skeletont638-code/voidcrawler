@@ -7,10 +7,25 @@
 </head>
 <body>
   <div id="game-root">
+    <div id="title-screen">
+      <h1>Voidcrawler</h1>
+      <p id="title-currency"></p>
+      <div id="class-list"></div>
+      <p class="title-hint">↑/↓ select class · b buy locked class · Enter start run · m mute</p>
+    </div>
     <canvas id="game-canvas"></canvas>
     <div id="hud"></div>
     <div id="inventory-panel" class="hidden"></div>
     <div id="combat-log"></div>
+    <div id="perk-choice" class="hidden">
+      <h2>Level Up! Choose a perk:</h2>
+      <div id="perk-options"></div>
+    </div>
+    <div id="run-summary" class="hidden">
+      <h2 id="run-summary-title"></h2>
+      <p id="run-summary-stats"></p>
+      <p class="title-hint">Press Enter to continue</p>
+    </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>

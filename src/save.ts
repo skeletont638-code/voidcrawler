@@ -7,6 +7,7 @@ const DEFAULT_META: MetaProgression = {
   currency: 0,
   unlockedClasses: ['adventurer'],
   unlockedPerks: [],
+  mutedAudio: false,
 };
 
 export function loadMeta(storage: StorageLike = globalThis.localStorage): MetaProgression {
