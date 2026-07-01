@@ -8,6 +8,12 @@ import { decideMonsterAction } from './ai.js';
 import { generateItem, rollLootTable, RARITY } from './items.js';
 import { BASE_ITEMS, getLootTableForFloor } from './data.js';
 import { renderHUD, renderInventory, renderCombatLog, renderMinimap } from './ui.js';
+import {
+  createShake, updateShake, getShakeOffset,
+  createParticleBurst, updateParticles,
+  createFloatingText, updateFloatingTexts,
+  createTween, updateTween, getTweenPosition, drawFx,
+} from './fx.js';
 
 const canvas = document.getElementById('game-canvas');
 canvas.width = GRID_WIDTH * TILE_SIZE;
@@ -28,6 +34,11 @@ function log(message) {
 let kills = 0;
 const traps = new Map(); // key "x,y" -> { damage, ownerName }
 const groundItems = new Map(); // key "x,y" -> item instance
+
+const fxState = { shake: null, particles: [], floatingTexts: [] };
+let lastFrameTime = performance.now();
+let playerTween = null;
+const monsterTweens = new WeakMap(); // Monster instance -> TweenState
 
 function maybeDropLoot(x, y) {
   const lootTable = getLootTableForFloor(floor.depth);
@@ -88,6 +99,11 @@ function canSeeBetween(x1, y1, x2, y2) {
 
 function playerAttack(target) {
   const result = resolveAttack(player.getAttackStats(), rng);
+  fxState.floatingTexts.push(createFloatingText(
+    target.x * TILE_SIZE, target.y * TILE_SIZE, result.hit ? String(result.damage) : 'miss',
+    result.crit ? '#ffcc33' : '#ffffff',
+  ));
+  if (result.crit) fxState.shake = createShake(4, 0.15);
   if (!result.hit) {
     log(`You miss the ${target.archetype.name}.`);
     return;
@@ -100,6 +116,7 @@ function playerAttack(target) {
     kills += 1;
     player.gainXp(10);
     maybeDropLoot(target.x, target.y);
+    fxState.particles.push(...createParticleBurst(target.x * TILE_SIZE + TILE_SIZE / 2, target.y * TILE_SIZE + TILE_SIZE / 2, 12, rng));
   }
 }
 
@@ -124,12 +141,16 @@ function monsterTurn(monster) {
     } else {
       player.hp = Math.max(0, player.hp - result.damage);
       log(`The ${monster.archetype.name} hits you for ${result.damage}${result.crit ? ' (crit!)' : ''}.`);
+      fxState.floatingTexts.push(createFloatingText(player.x * TILE_SIZE, player.y * TILE_SIZE, String(result.damage), '#ff6666'));
+      fxState.shake = createShake(3, 0.15);
     }
   } else if (action.type === 'move') {
     if (isWalkable(action.to.x, action.to.y) && !monsterAt(action.to.x, action.to.y)
         && !(action.to.x === player.x && action.to.y === player.y)) {
+      const moveFrom = { x: monster.x, y: monster.y };
       monster.x = action.to.x;
       monster.y = action.to.y;
+      monsterTweens.set(monster, createTween(moveFrom, { x: monster.x, y: monster.y }, 0.12));
     }
   } else if (action.type === 'placeTrap') {
     const trapKey = `${action.at.x},${action.at.y}`;
@@ -177,7 +198,9 @@ function tryMovePlayer(dx, dy) {
     return;
   }
   if (!isWalkable(nx, ny)) return;
+  const moveFrom = { x: player.x, y: player.y };
   takeTurn(() => { player.x = nx; player.y = ny; });
+  playerTween = createTween(moveFrom, { x: player.x, y: player.y }, 0.12);
 }
 
 function startFloor(depth) {
@@ -189,6 +212,7 @@ function startFloor(depth) {
 
   traps.clear();
   groundItems.clear();
+  playerTween = null;
 
   const archetypeIds = ['rusher', 'caster', 'trapper'];
   monsters = floor.rooms.slice(1).map((room, i) => {
@@ -239,6 +263,9 @@ const TILE_COLORS = {
 };
 
 function render() {
+  const shakeOffset = getShakeOffset(fxState.shake);
+  ctx.save();
+  ctx.translate(shakeOffset.x, shakeOffset.y);
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   for (let y = 0; y < floor.height; y++) {
@@ -278,11 +305,16 @@ function render() {
   for (const m of monsters) {
     const key = `${m.x},${m.y}`;
     if (!visible.has(key)) continue;
+    const tween = monsterTweens.get(m);
+    const pixelPos = tween ? getTweenPosition(tween) : { x: m.x, y: m.y };
     ctx.fillStyle = m.archetype.color;
-    ctx.fillRect(m.x * TILE_SIZE + 4, m.y * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+    ctx.fillRect(pixelPos.x * TILE_SIZE + 4, pixelPos.y * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
   }
+  const playerPixelPos = playerTween ? getTweenPosition(playerTween) : { x: player.x, y: player.y };
   ctx.fillStyle = '#e0d060';
-  ctx.fillRect(player.x * TILE_SIZE + 4, player.y * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+  ctx.fillRect(playerPixelPos.x * TILE_SIZE + 4, playerPixelPos.y * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+  drawFx(ctx, fxState, TILE_SIZE);
+  ctx.restore();
 
   renderHUD(player, floor);
   renderInventory(player, inventoryOpen);
@@ -291,6 +323,20 @@ function render() {
 }
 
 function loop() {
+  const now = performance.now();
+  const dt = Math.min(0.1, (now - lastFrameTime) / 1000);
+  lastFrameTime = now;
+  fxState.shake = updateShake(fxState.shake, dt);
+  fxState.particles = updateParticles(fxState.particles, dt);
+  fxState.floatingTexts = updateFloatingTexts(fxState.floatingTexts, dt);
+  playerTween = updateTween(playerTween, dt);
+  for (const m of monsters) {
+    const tween = monsterTweens.get(m);
+    if (!tween) continue;
+    const updated = updateTween(tween, dt);
+    if (updated) monsterTweens.set(m, updated);
+    else monsterTweens.delete(m);
+  }
   render();
   requestAnimationFrame(loop);
 }
