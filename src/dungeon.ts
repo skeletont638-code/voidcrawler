@@ -1,19 +1,21 @@
-export const TILE = { WALL: 0, FLOOR: 1, STAIRS_DOWN: 2 };
+import type { Floor, RngFn } from './types.js';
 
-export function idx(x, y, width) {
+export const TILE = { WALL: 0, FLOOR: 1, STAIRS_DOWN: 2 } as const;
+
+export function idx(x: number, y: number, width: number): number {
   return y * width + x;
 }
 
 export class Room {
-  constructor(x, y, w, h) {
-    this.x = x; this.y = y; this.w = w; this.h = h;
-  }
-  center() {
+  constructor(public x: number, public y: number, public w: number, public h: number) {}
+  center(): { x: number; y: number } {
     return { x: Math.floor(this.x + this.w / 2), y: Math.floor(this.y + this.h / 2) };
   }
 }
 
-function splitBSP(x, y, w, h, rng, minSize, depth) {
+interface Leaf { x: number; y: number; w: number; h: number; }
+
+function splitBSP(x: number, y: number, w: number, h: number, rng: RngFn, minSize: number, depth: number): Leaf[] {
   if (depth <= 0 || w < minSize * 2 || h < minSize * 2) {
     return [{ x, y, w, h }];
   }
@@ -32,7 +34,7 @@ function splitBSP(x, y, w, h, rng, minSize, depth) {
   ];
 }
 
-function carveRoom(grid, width, room) {
+function carveRoom(grid: Uint8Array, width: number, room: Room): void {
   for (let y = room.y; y < room.y + room.h; y++) {
     for (let x = room.x; x < room.x + room.w; x++) {
       grid[idx(x, y, width)] = TILE.FLOOR;
@@ -40,7 +42,7 @@ function carveRoom(grid, width, room) {
   }
 }
 
-function carveCorridor(grid, width, from, to) {
+function carveCorridor(grid: Uint8Array, width: number, from: { x: number; y: number }, to: { x: number; y: number }): void {
   let { x, y } = from;
   while (x !== to.x) {
     grid[idx(x, y, width)] = TILE.FLOOR;
@@ -53,7 +55,7 @@ function carveCorridor(grid, width, from, to) {
   grid[idx(x, y, width)] = TILE.FLOOR;
 }
 
-export function generateFloor(depth, rng, width, height) {
+export function generateFloor(depth: number, rng: RngFn, width: number, height: number): Floor {
   const grid = new Uint8Array(width * height).fill(TILE.WALL);
   const leaves = splitBSP(1, 1, width - 2, height - 2, rng, 6, 5);
 
@@ -67,25 +69,25 @@ export function generateFloor(depth, rng, width, height) {
 
   rooms.forEach(room => carveRoom(grid, width, room));
   for (let i = 1; i < rooms.length; i++) {
-    carveCorridor(grid, width, rooms[i - 1].center(), rooms[i].center());
+    carveCorridor(grid, width, rooms[i - 1]!.center(), rooms[i]!.center());
   }
 
-  const stairsRoom = rooms[rooms.length - 1];
+  const stairsRoom = rooms[rooms.length - 1]!;
   const stairsDown = stairsRoom.center();
   grid[idx(stairsDown.x, stairsDown.y, width)] = TILE.STAIRS_DOWN;
 
   return { grid, width, height, rooms, depth, stairsDown };
 }
 
-export function isFullyConnected(floor) {
+export function isFullyConnected(floor: Floor): boolean {
   const { grid, width, height, rooms } = floor;
   if (rooms.length === 0) return true;
-  const start = rooms[0].center();
-  const seen = new Set([idx(start.x, start.y, width)]);
-  const stack = [start];
-  const deltas = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const start = rooms[0]!.center();
+  const seen = new Set<number>([idx(start.x, start.y, width)]);
+  const stack: Array<{ x: number; y: number }> = [start];
+  const deltas: Array<[number, number]> = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   while (stack.length) {
-    const { x, y } = stack.pop();
+    const { x, y } = stack.pop()!;
     for (const [dx, dy] of deltas) {
       const nx = x + dx, ny = y + dy;
       if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;

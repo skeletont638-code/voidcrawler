@@ -1,11 +1,15 @@
 import { TILE, idx } from './dungeon.js';
+import type { TileGrid } from './types.js';
 
-const OCTANTS = [
+const OCTANTS: Array<[number, number, number, number]> = [
   [1, 0, 0, 1], [0, 1, 1, 0], [0, -1, 1, 0], [-1, 0, 0, 1],
   [-1, 0, 0, -1], [0, -1, -1, 0], [0, 1, -1, 0], [1, 0, 0, -1],
 ];
 
-function castLight(floor, cx, cy, radius, visible, row, start, end, xx, xy, yx, yy) {
+function castLight(
+  floor: TileGrid, cx: number, cy: number, radius: number, visible: Set<string>,
+  row: number, start: number, end: number, xx: number, xy: number, yx: number, yy: number,
+): void {
   if (start < end) return;
   let newStart = 0;
   for (let i = row; i <= radius; i++) {
@@ -39,8 +43,8 @@ function castLight(floor, cx, cy, radius, visible, row, start, end, xx, xy, yx, 
   }
 }
 
-export function computeFOV(floor, originX, originY, radius) {
-  const visible = new Set([`${originX},${originY}`]);
+export function computeFOV(floor: TileGrid, originX: number, originY: number, radius: number): Set<string> {
+  const visible = new Set<string>([`${originX},${originY}`]);
   for (const [xx, xy, yx, yy] of OCTANTS) {
     castLight(floor, originX, originY, radius, visible, 1, 1.0, 0.0, xx, xy, yx, yy);
   }

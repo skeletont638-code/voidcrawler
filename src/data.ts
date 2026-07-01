@@ -1,14 +1,16 @@
+import type { MonsterArchetype, StartingClass, BaseItem, LootTableEntry } from './types.js';
+
 export const TILE_SIZE = 24;
 export const GRID_WIDTH = 60;
 export const GRID_HEIGHT = 34;
 
-export const XP_TABLE = [0, 10, 25, 45, 70, 100, 140, 190, 250, 320];
+export const XP_TABLE: number[] = [0, 10, 25, 45, 70, 100, 140, 190, 250, 320];
 
-export const STARTING_CLASSES = {
+export const STARTING_CLASSES: Record<string, StartingClass> = {
   adventurer: { id: 'adventurer', name: 'Adventurer', baseHp: 30, str: 5, dex: 5, vit: 5 },
 };
 
-export const MONSTER_ARCHETYPES = {
+export const MONSTER_ARCHETYPES: Record<string, MonsterArchetype> = {
   rusher: {
     id: 'rusher', name: 'Rusher', hp: 12, damage: 4, critChance: 0.05, dodgeChance: 0.05,
     sightRange: 6, ranged: false, range: 1, fleeHpFraction: 0, color: '#b33',
@@ -28,7 +30,7 @@ export const MONSTER_ARCHETYPES = {
   },
 };
 
-export const BASE_ITEMS = [
+export const BASE_ITEMS: BaseItem[] = [
   { id: 'short-sword', type: 'weapon', name: 'Short Sword', baseDamage: 4 },
   { id: 'long-sword', type: 'weapon', name: 'Long Sword', baseDamage: 6 },
   { id: 'leather-armor', type: 'armor', name: 'Leather Armor', baseArmor: 2 },
@@ -37,7 +39,7 @@ export const BASE_ITEMS = [
   { id: 'scroll-of-fire', type: 'scroll', name: 'Unidentified Scroll', statusEffect: 'burn' },
 ];
 
-export function getLootTableForFloor(depth) {
+export function getLootTableForFloor(depth: number): LootTableEntry[] {
   return [
     { itemId: null, weight: 50 },
     { itemId: 'short-sword', weight: 10 },
