@@ -1,0 +1,30 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #0a0a0f;
+  color: #d8d8e0;
+  font-family: 'Courier New', monospace;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+#game-root { position: relative; }
+#game-canvas { background: #000; display: block; image-rendering: pixelated; }
+#hud {
+  position: absolute; top: 8px; left: 8px;
+  font-size: 14px; line-height: 1.4;
+  text-shadow: 1px 1px 2px #000;
+}
+#combat-log {
+  position: absolute; bottom: 8px; left: 8px;
+  font-size: 12px; max-width: 340px; max-height: 90px;
+  overflow: hidden; opacity: 0.85;
+}
+#inventory-panel {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(10, 10, 20, 0.92);
+  border: 1px solid #444; padding: 8px; font-size: 12px;
+  min-width: 200px;
+}
+.hidden { display: none; }
