@@ -14,6 +14,7 @@ import {
   createFloatingText, updateFloatingTexts,
   createTween, updateTween, getTweenPosition, drawFx,
 } from './fx.js';
+import { loadMeta, saveMeta, applyRunResult } from './save.js';
 
 const canvas = document.getElementById('game-canvas');
 canvas.width = GRID_WIDTH * TILE_SIZE;
@@ -24,6 +25,9 @@ const rng = createRng(Date.now() ^ 0x2f2f2f2f);
 
 const player = new Player(STARTING_CLASSES.adventurer);
 let floor, monsters, explored, visible;
+
+const meta = loadMeta();
+let gameState = 'playing'; // 'playing' | 'dead' | 'victory'
 
 const combatLog = [];
 function log(message) {
@@ -160,6 +164,15 @@ function monsterTurn(monster) {
   }
 }
 
+function endRun(state) {
+  gameState = state;
+  const { updated, earned } = applyRunResult(meta, { floorReached: floor.depth, kills });
+  saveMeta(updated);
+  log(state === 'dead'
+    ? `You died on floor ${floor.depth}. Earned ${earned} currency (total ${updated.currency}).`
+    : `You escaped the depths! Earned ${earned} currency (total ${updated.currency}).`);
+}
+
 function triggerTrapUnderPlayer() {
   const trapKey = `${player.x},${player.y}`;
   const trap = traps.get(trapKey);
@@ -178,14 +191,25 @@ function tickPlayerStatuses() {
   }
 }
 
+function checkPlayerDeath() {
+  if (player.hp === 0 && gameState === 'playing') {
+    endRun('dead');
+    return true;
+  }
+  return false;
+}
+
 function takeTurn(playerAction) {
   tickPlayerStatuses();
+  if (checkPlayerDeath()) return;
   playerAction();
   triggerTrapUnderPlayer();
+  if (checkPlayerDeath()) return;
   visible = computeFOV(floor, player.x, player.y, 8);
   for (const key of visible) explored.add(key);
   for (const monster of [...monsters]) {
     monsterTurn(monster);
+    if (checkPlayerDeath()) return;
   }
 }
 
@@ -232,6 +256,10 @@ const KEY_MOVES = {
 };
 
 window.addEventListener('keydown', (e) => {
+  if (gameState !== 'playing') {
+    if (e.key === 'Enter') location.reload();
+    return;
+  }
   const move = KEY_MOVES[e.key];
   if (move) {
     e.preventDefault();
