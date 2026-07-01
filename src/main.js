@@ -121,6 +121,9 @@ function playerAttack(target) {
     player.gainXp(10);
     maybeDropLoot(target.x, target.y);
     fxState.particles.push(...createParticleBurst(target.x * TILE_SIZE + TILE_SIZE / 2, target.y * TILE_SIZE + TILE_SIZE / 2, 12, rng));
+    if (target.archetype.id === 'boss') {
+      endRun('victory');
+    }
   }
 }
 
@@ -225,6 +228,12 @@ function tryMovePlayer(dx, dy) {
   const moveFrom = { x: player.x, y: player.y };
   takeTurn(() => { player.x = nx; player.y = ny; });
   playerTween = createTween(moveFrom, { x: player.x, y: player.y }, 0.12);
+
+  const tile = floor.grid[idx(player.x, player.y, floor.width)];
+  if (tile === TILE.STAIRS_DOWN && gameState === 'playing' && floor.depth < 9) {
+    log(`You descend to floor ${floor.depth + 1}.`);
+    startFloor(floor.depth + 1);
+  }
 }
 
 function startFloor(depth) {
@@ -238,11 +247,17 @@ function startFloor(depth) {
   groundItems.clear();
   playerTween = null;
 
-  const archetypeIds = ['rusher', 'caster', 'trapper'];
-  monsters = floor.rooms.slice(1).map((room, i) => {
-    const c = room.center();
-    return new Monster(MONSTER_ARCHETYPES[archetypeIds[i % archetypeIds.length]], c.x, c.y);
-  });
+  if (depth === 9) {
+    const bossRoom = floor.rooms[floor.rooms.length - 1];
+    const c = bossRoom.center();
+    monsters = [new Monster(MONSTER_ARCHETYPES.boss, c.x, c.y)];
+  } else {
+    const archetypeIds = ['rusher', 'caster', 'trapper'];
+    monsters = floor.rooms.slice(1).map((room, i) => {
+      const c = room.center();
+      return new Monster(MONSTER_ARCHETYPES[archetypeIds[i % archetypeIds.length]], c.x, c.y);
+    });
+  }
 
   explored = new Set();
   visible = computeFOV(floor, player.x, player.y, 8);

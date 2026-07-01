@@ -22,6 +22,10 @@ export const MONSTER_ARCHETYPES = {
     sightRange: 4, ranged: false, range: 1, fleeHpFraction: 0, color: '#3b3',
     stationary: true, trapRange: 4, trapDamage: 6,
   },
+  boss: {
+    id: 'boss', name: 'Void Warden', hp: 60, damage: 9, critChance: 0.15, dodgeChance: 0.05,
+    sightRange: 10, ranged: false, range: 1, fleeHpFraction: 0, color: '#a0a',
+  },
 };
 
 export const BASE_ITEMS = [
