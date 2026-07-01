@@ -15,6 +15,7 @@ import {
   createTween, updateTween, getTweenPosition, drawFx,
 } from './fx.js';
 import { loadMeta, saveMeta, applyRunResult } from './save.js';
+import { drawSprite } from './sprites.js';
 import type { Floor, Item, FxState, TweenState, Biome, Perk } from './types.js';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
@@ -435,12 +436,10 @@ function render(): void {
     if (m.archetype.invisible && chebyshevDistance(m.x, m.y, player.x, player.y) > 1) continue;
     const tween = monsterTweens.get(m) ?? null;
     const pixelPos = tween ? getTweenPosition(tween)! : { x: m.x, y: m.y };
-    ctx.fillStyle = m.archetype.color;
-    ctx.fillRect(pixelPos.x * TILE_SIZE + 4, pixelPos.y * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+    drawSprite(ctx, m.archetype.id, pixelPos.x * TILE_SIZE + 4, pixelPos.y * TILE_SIZE + 4, TILE_SIZE - 8, m.archetype.color);
   }
   const playerPixelPos = playerTween ? getTweenPosition(playerTween)! : { x: player.x, y: player.y };
-  ctx.fillStyle = '#e0d060';
-  ctx.fillRect(playerPixelPos.x * TILE_SIZE + 4, playerPixelPos.y * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+  drawSprite(ctx, 'player', playerPixelPos.x * TILE_SIZE + 4, playerPixelPos.y * TILE_SIZE + 4, TILE_SIZE - 8, '#e0d060');
   drawFx(ctx, fxState);
   ctx.restore();
 
