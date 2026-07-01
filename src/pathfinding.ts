@@ -1,30 +1,34 @@
 import { TILE, idx } from './dungeon.js';
+import type { TileGrid } from './types.js';
 
-function heuristic(a, b) {
+interface Point { x: number; y: number; }
+
+function heuristic(a: Point, b: Point): number {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 }
 
-export function aStar(start, goal, floor) {
-  const key = (p) => `${p.x},${p.y}`;
-  const open = new Map([[key(start), start]]);
-  const cameFrom = new Map();
-  const gScore = new Map([[key(start), 0]]);
-  const fScore = new Map([[key(start), heuristic(start, goal)]]);
+export function aStar(start: Point, goal: Point, floor: TileGrid): Point[] | null {
+  const key = (p: Point) => `${p.x},${p.y}`;
+  const open = new Map<string, Point>([[key(start), start]]);
+  const cameFrom = new Map<string, Point>();
+  const gScore = new Map<string, number>([[key(start), 0]]);
+  const fScore = new Map<string, number>([[key(start), heuristic(start, goal)]]);
 
   while (open.size > 0) {
-    let currentKey = null;
-    let current = null;
+    let currentKey: string | null = null;
+    let current: Point | null = null;
     let best = Infinity;
     for (const [k, node] of open) {
       const f = fScore.get(k) ?? Infinity;
       if (f < best) { best = f; currentKey = k; current = node; }
     }
+    if (!current || !currentKey) break;
 
     if (current.x === goal.x && current.y === goal.y) {
-      const path = [current];
-      let k = currentKey;
+      const path: Point[] = [current];
+      let k: string = currentKey;
       while (cameFrom.has(k)) {
-        const prev = cameFrom.get(k);
+        const prev = cameFrom.get(k)!;
         path.unshift(prev);
         k = key(prev);
       }
@@ -32,7 +36,7 @@ export function aStar(start, goal, floor) {
     }
 
     open.delete(currentKey);
-    const neighbors = [
+    const neighbors: Point[] = [
       { x: current.x + 1, y: current.y }, { x: current.x - 1, y: current.y },
       { x: current.x, y: current.y + 1 }, { x: current.x, y: current.y - 1 },
     ];

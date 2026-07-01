@@ -1,16 +1,20 @@
 import { aStar } from './pathfinding.js';
+import type { TileGrid, MonsterAction } from './types.js';
+import type { Monster, Player } from './entities.js';
 
-function chebyshev(x1, y1, x2, y2) {
+function chebyshev(x1: number, y1: number, x2: number, y2: number): number {
   return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
 }
 
-function stepAwayFrom(monster, player) {
+function stepAwayFrom(monster: Monster, player: Player): { x: number; y: number } {
   const dx = Math.sign(monster.x - player.x) || (Math.random() < 0.5 ? 1 : -1);
   const dy = Math.sign(monster.y - player.y) || (Math.random() < 0.5 ? 1 : -1);
   return { x: monster.x + dx, y: monster.y + dy };
 }
 
-export function decideMonsterAction(monster, player, floor, canSee) {
+export type CanSeeFn = (mx: number, my: number, px: number, py: number) => boolean;
+
+export function decideMonsterAction(monster: Monster, player: Player, floor: TileGrid, canSee: CanSeeFn): MonsterAction {
   const dist = chebyshev(monster.x, monster.y, player.x, player.y);
   const sees = canSee(monster.x, monster.y, player.x, player.y);
 
@@ -29,7 +33,7 @@ export function decideMonsterAction(monster, player, floor, canSee) {
       return { type: 'attack', target: player };
     }
     monster.state = 'aggro';
-    if (dist <= monster.archetype.trapRange) {
+    if (dist <= (monster.archetype.trapRange ?? 0)) {
       const path = aStar({ x: monster.x, y: monster.y }, { x: player.x, y: player.y }, floor);
       if (path && path.length > 1) {
         return { type: 'placeTrap', at: path[1] };

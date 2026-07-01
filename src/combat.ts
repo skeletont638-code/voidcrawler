@@ -1,4 +1,12 @@
-export function resolveAttack({ damage, critChance = 0, dodgeChance = 0 }, rng) {
+import type { RngFn, StatusEffect, AttackStats } from './types.js';
+
+export interface AttackResult {
+  hit: boolean;
+  damage: number;
+  crit: boolean;
+}
+
+export function resolveAttack({ damage, critChance = 0, dodgeChance = 0 }: Partial<AttackStats> & { damage: number }, rng: RngFn): AttackResult {
   if (rng() < dodgeChance) {
     return { hit: false, damage: 0, crit: false };
   }
@@ -8,9 +16,9 @@ export function resolveAttack({ damage, critChance = 0, dodgeChance = 0 }, rng) 
   return { hit: true, damage: finalDamage, crit: isCrit };
 }
 
-export function tickStatuses(statuses) {
+export function tickStatuses(statuses: StatusEffect[]): { totalDamage: number; remaining: StatusEffect[] } {
   let totalDamage = 0;
-  const remaining = [];
+  const remaining: StatusEffect[] = [];
   for (const status of statuses) {
     totalDamage += status.damagePerTick;
     const turnsRemaining = status.turnsRemaining - 1;
