@@ -4,6 +4,15 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -19,3 +28,18 @@ jobs:
       - run: npm run format:check
       - run: npm test
       - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        with:
+          path: dist
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
