@@ -15,45 +15,49 @@ import {
   createTween, updateTween, getTweenPosition, drawFx,
 } from './fx.js';
 import { loadMeta, saveMeta, applyRunResult } from './save.js';
+import type { Floor, Item, FxState, TweenState } from './types.js';
 
-const canvas = document.getElementById('game-canvas');
+const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 canvas.width = GRID_WIDTH * TILE_SIZE;
 canvas.height = GRID_HEIGHT * TILE_SIZE;
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d')!;
 
 const rng = createRng(Date.now() ^ 0x2f2f2f2f);
 
-const player = new Player(STARTING_CLASSES.adventurer);
-let floor, monsters, explored, visible;
+const player = new Player(STARTING_CLASSES.adventurer!);
+let floor: Floor;
+let monsters: Monster[];
+let explored: Set<string>;
+let visible: Set<string>;
 
 const meta = loadMeta();
-let gameState = 'playing'; // 'playing' | 'dead' | 'victory'
+let gameState: 'playing' | 'dead' | 'victory' = 'playing';
 
-const combatLog = [];
-function log(message) {
+const combatLog: string[] = [];
+function log(message: string): void {
   combatLog.push(message);
   if (combatLog.length > 6) combatLog.shift();
 }
 
 let kills = 0;
-const traps = new Map(); // key "x,y" -> { damage, ownerName }
-const groundItems = new Map(); // key "x,y" -> item instance
+const traps = new Map<string, { damage: number; ownerName: string }>();
+const groundItems = new Map<string, Item>();
 
-const fxState = { shake: null, particles: [], floatingTexts: [] };
+const fxState: FxState = { shake: null, particles: [], floatingTexts: [] };
 let lastFrameTime = performance.now();
-let playerTween = null;
-const monsterTweens = new WeakMap(); // Monster instance -> TweenState
+let playerTween: TweenState | null = null;
+const monsterTweens = new WeakMap<Monster, TweenState>();
 
-function maybeDropLoot(x, y) {
+function maybeDropLoot(x: number, y: number): void {
   const lootTable = getLootTableForFloor(floor.depth);
   const entry = rollLootTable(lootTable, rng);
   if (!entry.itemId) return;
-  const base = BASE_ITEMS.find(b => b.id === entry.itemId);
-  const rarity = RARITY[Math.min(RARITY.length - 1, Math.floor(rng() * rng() * RARITY.length))];
+  const base = BASE_ITEMS.find(b => b.id === entry.itemId)!;
+  const rarity = RARITY[Math.min(RARITY.length - 1, Math.floor(rng() * rng() * RARITY.length))]!;
   groundItems.set(`${x},${y}`, generateItem(base, rarity, rng, floor.depth));
 }
 
-function pickUpItemUnderPlayer() {
+function pickUpItemUnderPlayer(): void {
   const key = `${player.x},${player.y}`;
   const item = groundItems.get(key);
   if (!item) return;
@@ -62,19 +66,19 @@ function pickUpItemUnderPlayer() {
   log(`You pick up ${item.name} (${item.rarity}).`);
 }
 
-function equipOrUseItem(index) {
+function equipOrUseItem(index: number): void {
   const item = player.inventory[index];
   if (!item) return;
   if (item.type === 'weapon' || item.type === 'armor') {
-    const slot = item.type === 'weapon' ? 'weapon' : 'armor';
+    const slot: 'weapon' | 'armor' = item.type === 'weapon' ? 'weapon' : 'armor';
     player.equipment[slot] = item;
     player.inventory.splice(index, 1);
     log(`You equip ${item.name}.`);
   } else if (item.type === 'potion') {
     item.identified = true;
-    player.hp = Math.min(player.maxHp, player.hp + item.healAmount);
+    player.hp = Math.min(player.maxHp, player.hp + (item.healAmount ?? 0));
     player.inventory.splice(index, 1);
-    log(`You drink the potion and recover ${item.healAmount} HP.`);
+    log(`You drink the potion and recover ${item.healAmount ?? 0} HP.`);
   } else if (item.type === 'scroll') {
     item.identified = true;
     player.inventory.splice(index, 1);
@@ -88,20 +92,20 @@ function equipOrUseItem(index) {
   }
 }
 
-function isWalkable(x, y) {
+function isWalkable(x: number, y: number): boolean {
   if (x < 0 || y < 0 || x >= floor.width || y >= floor.height) return false;
   return floor.grid[idx(x, y, floor.width)] !== TILE.WALL;
 }
 
-function monsterAt(x, y) {
+function monsterAt(x: number, y: number): Monster | undefined {
   return monsters.find(m => m.x === x && m.y === y);
 }
 
-function canSeeBetween(x1, y1, x2, y2) {
+function canSeeBetween(x1: number, y1: number, x2: number, y2: number): boolean {
   return computeFOV(floor, x1, y1, 8).has(`${x2},${y2}`);
 }
 
-function playerAttack(target) {
+function playerAttack(target: Monster): void {
   const result = resolveAttack(player.getAttackStats(), rng);
   fxState.floatingTexts.push(createFloatingText(
     target.x * TILE_SIZE, target.y * TILE_SIZE, result.hit ? String(result.damage) : 'miss',
@@ -127,7 +131,7 @@ function playerAttack(target) {
   }
 }
 
-function monsterTurn(monster) {
+function monsterTurn(monster: Monster): void {
   const { totalDamage, remaining } = tickStatuses(monster.statuses);
   monster.statuses = remaining;
   monster.hp = Math.max(0, monster.hp - totalDamage);
@@ -152,22 +156,24 @@ function monsterTurn(monster) {
       fxState.shake = createShake(3, 0.15);
     }
   } else if (action.type === 'move') {
-    if (isWalkable(action.to.x, action.to.y) && !monsterAt(action.to.x, action.to.y)
-        && !(action.to.x === player.x && action.to.y === player.y)) {
+    const to = action.to!;
+    if (isWalkable(to.x, to.y) && !monsterAt(to.x, to.y)
+        && !(to.x === player.x && to.y === player.y)) {
       const moveFrom = { x: monster.x, y: monster.y };
-      monster.x = action.to.x;
-      monster.y = action.to.y;
+      monster.x = to.x;
+      monster.y = to.y;
       monsterTweens.set(monster, createTween(moveFrom, { x: monster.x, y: monster.y }, 0.12));
     }
   } else if (action.type === 'placeTrap') {
-    const trapKey = `${action.at.x},${action.at.y}`;
-    if (isWalkable(action.at.x, action.at.y) && !monsterAt(action.at.x, action.at.y) && !traps.has(trapKey)) {
-      traps.set(trapKey, { damage: monster.archetype.trapDamage, ownerName: monster.archetype.name });
+    const at = action.at!;
+    const trapKey = `${at.x},${at.y}`;
+    if (isWalkable(at.x, at.y) && !monsterAt(at.x, at.y) && !traps.has(trapKey)) {
+      traps.set(trapKey, { damage: monster.archetype.trapDamage ?? 0, ownerName: monster.archetype.name });
     }
   }
 }
 
-function endRun(state) {
+function endRun(state: 'dead' | 'victory'): void {
   gameState = state;
   const { updated, earned } = applyRunResult(meta, { floorReached: floor.depth, kills });
   saveMeta(updated);
@@ -176,7 +182,7 @@ function endRun(state) {
     : `You escaped the depths! Earned ${earned} currency (total ${updated.currency}).`);
 }
 
-function triggerTrapUnderPlayer() {
+function triggerTrapUnderPlayer(): void {
   const trapKey = `${player.x},${player.y}`;
   const trap = traps.get(trapKey);
   if (!trap) return;
@@ -185,7 +191,7 @@ function triggerTrapUnderPlayer() {
   log(`You trigger a trap set by the ${trap.ownerName}! You take ${trap.damage} damage.`);
 }
 
-function tickPlayerStatuses() {
+function tickPlayerStatuses(): void {
   const { totalDamage, remaining } = tickStatuses(player.statuses);
   player.statuses = remaining;
   if (totalDamage > 0) {
@@ -194,7 +200,7 @@ function tickPlayerStatuses() {
   }
 }
 
-function checkPlayerDeath() {
+function checkPlayerDeath(): boolean {
   if (player.hp === 0 && gameState === 'playing') {
     endRun('dead');
     return true;
@@ -202,7 +208,7 @@ function checkPlayerDeath() {
   return false;
 }
 
-function takeTurn(playerAction) {
+function takeTurn(playerAction: () => void): void {
   tickPlayerStatuses();
   if (checkPlayerDeath()) return;
   playerAction();
@@ -216,7 +222,7 @@ function takeTurn(playerAction) {
   }
 }
 
-function tryMovePlayer(dx, dy) {
+function tryMovePlayer(dx: number, dy: number): void {
   const nx = player.x + dx;
   const ny = player.y + dy;
   const occupant = monsterAt(nx, ny);
@@ -236,9 +242,9 @@ function tryMovePlayer(dx, dy) {
   }
 }
 
-function startFloor(depth) {
+function startFloor(depth: number): void {
   floor = generateFloor(depth, rng, GRID_WIDTH, GRID_HEIGHT);
-  const spawnRoom = floor.rooms[0];
+  const spawnRoom = floor.rooms[0]!;
   const spawn = spawnRoom.center();
   player.x = spawn.x;
   player.y = spawn.y;
@@ -248,14 +254,14 @@ function startFloor(depth) {
   playerTween = null;
 
   if (depth === 9) {
-    const bossRoom = floor.rooms[floor.rooms.length - 1];
+    const bossRoom = floor.rooms[floor.rooms.length - 1]!;
     const c = bossRoom.center();
-    monsters = [new Monster(MONSTER_ARCHETYPES.boss, c.x, c.y)];
+    monsters = [new Monster(MONSTER_ARCHETYPES.boss!, c.x, c.y)];
   } else {
     const archetypeIds = ['rusher', 'caster', 'trapper'];
     monsters = floor.rooms.slice(1).map((room, i) => {
       const c = room.center();
-      return new Monster(MONSTER_ARCHETYPES[archetypeIds[i % archetypeIds.length]], c.x, c.y);
+      return new Monster(MONSTER_ARCHETYPES[archetypeIds[i % archetypeIds.length]!]!, c.x, c.y);
     });
   }
 
@@ -266,11 +272,11 @@ function startFloor(depth) {
 
 let inventoryOpen = false;
 
-const KEY_MOVES = {
+const KEY_MOVES: Record<string, [number, number]> = {
   ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
 };
 
-window.addEventListener('keydown', (e) => {
+window.addEventListener('keydown', (e: KeyboardEvent) => {
   if (gameState !== 'playing') {
     if (e.key === 'Enter') location.reload();
     return;
@@ -299,13 +305,15 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-const TILE_COLORS = {
+const TILE_COLORS: Record<number, string> = {
   [TILE.WALL]: '#1c1c26',
   [TILE.FLOOR]: '#2e2e3a',
   [TILE.STAIRS_DOWN]: '#4a4a2e',
 };
 
-function render() {
+const ITEM_RARITY_COLORS: Record<string, string> = { common: '#c8c8c8', uncommon: '#5ad45a', rare: '#4a90ff', legendary: '#e0a030' };
+
+function render(): void {
   const shakeOffset = getShakeOffset(fxState.shake);
   ctx.save();
   ctx.translate(shakeOffset.x, shakeOffset.y);
@@ -315,17 +323,18 @@ function render() {
     for (let x = 0; x < floor.width; x++) {
       const key = `${x},${y}`;
       if (!explored.has(key)) continue;
-      const tile = floor.grid[y * floor.width + x];
-      ctx.fillStyle = TILE_COLORS[tile];
+      const tile = floor.grid[y * floor.width + x]!;
+      ctx.fillStyle = TILE_COLORS[tile]!;
       ctx.globalAlpha = visible.has(key) ? 1.0 : 0.4;
       ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
     }
   }
   ctx.globalAlpha = 1.0;
-  const ITEM_RARITY_COLORS = { common: '#c8c8c8', uncommon: '#5ad45a', rare: '#4a90ff', legendary: '#e0a030' };
   for (const [itemKey, item] of groundItems) {
     if (!explored.has(itemKey)) continue;
-    const [ix, iy] = itemKey.split(',').map(Number);
+    const [ixStr, iyStr] = itemKey.split(',');
+    const ix = Number(ixStr);
+    const iy = Number(iyStr);
     ctx.globalAlpha = visible.has(itemKey) ? 1.0 : 0.4;
     ctx.fillStyle = ITEM_RARITY_COLORS[item.rarity] ?? '#c8c8c8';
     ctx.beginPath();
@@ -333,9 +342,11 @@ function render() {
     ctx.fill();
   }
   ctx.globalAlpha = 1.0;
-  for (const [trapKey, trap] of traps) {
+  for (const [trapKey] of traps) {
     if (!visible.has(trapKey)) continue;
-    const [tx, ty] = trapKey.split(',').map(Number);
+    const [txStr, tyStr] = trapKey.split(',');
+    const tx = Number(txStr);
+    const ty = Number(tyStr);
     ctx.strokeStyle = '#d04040';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -348,15 +359,15 @@ function render() {
   for (const m of monsters) {
     const key = `${m.x},${m.y}`;
     if (!visible.has(key)) continue;
-    const tween = monsterTweens.get(m);
-    const pixelPos = tween ? getTweenPosition(tween) : { x: m.x, y: m.y };
+    const tween = monsterTweens.get(m) ?? null;
+    const pixelPos = tween ? getTweenPosition(tween)! : { x: m.x, y: m.y };
     ctx.fillStyle = m.archetype.color;
     ctx.fillRect(pixelPos.x * TILE_SIZE + 4, pixelPos.y * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
   }
-  const playerPixelPos = playerTween ? getTweenPosition(playerTween) : { x: player.x, y: player.y };
+  const playerPixelPos = playerTween ? getTweenPosition(playerTween)! : { x: player.x, y: player.y };
   ctx.fillStyle = '#e0d060';
   ctx.fillRect(playerPixelPos.x * TILE_SIZE + 4, playerPixelPos.y * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
-  drawFx(ctx, fxState, TILE_SIZE);
+  drawFx(ctx, fxState);
   ctx.restore();
 
   renderHUD(player, floor);
@@ -365,7 +376,7 @@ function render() {
   renderMinimap(ctx, floor, player, explored);
 }
 
-function loop() {
+function loop(): void {
   const now = performance.now();
   const dt = Math.min(0.1, (now - lastFrameTime) / 1000);
   lastFrameTime = now;
