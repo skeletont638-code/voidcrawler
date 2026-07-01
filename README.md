@@ -16,16 +16,16 @@ A procedurally generated roguelike dungeon crawler, built entirely in TypeScript
 
 ## Controls
 
-| Key | Action |
-| --- | --- |
-| Arrow keys | Move / attack (walk into a monster to attack it) |
-| `g` | Pick up item on current tile |
-| `i` | Toggle inventory |
-| `1`–`9` | Equip/use inventory item, or pick a perk/class at a choice screen |
-| `m` | Toggle sound |
-| `↑` / `↓` | Select class (title screen) |
-| `b` | Buy the selected locked class (title screen) |
-| `Enter` | Start run / continue past death or victory screens |
+| Key        | Action                                                            |
+| ---------- | ----------------------------------------------------------------- |
+| Arrow keys | Move / attack (walk into a monster to attack it)                  |
+| `g`        | Pick up item on current tile                                      |
+| `i`        | Toggle inventory                                                  |
+| `1`–`9`    | Equip/use inventory item, or pick a perk/class at a choice screen |
+| `m`        | Toggle sound                                                      |
+| `↑` / `↓`  | Select class (title screen)                                       |
+| `b`        | Buy the selected locked class (title screen)                      |
+| `Enter`    | Start run / continue past death or victory screens                |
 
 ## Run it locally
 
